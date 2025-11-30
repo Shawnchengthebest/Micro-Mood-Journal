@@ -56,30 +56,15 @@
                 <div class="card">
                     <div class="entry-header">
                         <h2>How are you feeling today?</h2>
-                        <button class="ai-help-btn" onclick="analyzeCurrentMood()" title="Get AI Analysis">🤖 Analyze Today</button>
+                        <p class="entry-subtitle">Write naturally - AI will analyze your mood</p>
                     </div>
                     
-                    <!-- AI Suggestion Panel -->
-                    <div id="ai-suggestion" class="ai-suggestion hidden">
-                        <div class="ai-suggestion-content">
-                            <h3>📊 AI Mood Suggestion</h3>
-                            <div id="ai-suggestion-result" class="ai-suggestion-result"></div>
-                            <div class="ai-suggestion-actions">
-                                <button class="ai-action-btn" onclick="acceptAISuggestion()">Accept Suggestion</button>
-                                <button class="ai-action-btn secondary" onclick="dismissAISuggestion()">Dismiss</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mood-selector">
-                        <button class="mood-btn" data-mood="1" title="Very Bad">😢</button>
-                        <button class="mood-btn" data-mood="2" title="Bad">😟</button>
-                        <button class="mood-btn" data-mood="3" title="Neutral">😐</button>
-                        <button class="mood-btn" data-mood="4" title="Good">🙂</button>
-                        <button class="mood-btn" data-mood="5" title="Excellent">😄</button>
-                    </div>
                     <textarea id="mood-text" placeholder="Share your thoughts, feelings, and what's on your mind..." class="mood-textarea"></textarea>
-                    <button class="submit-btn" onclick="handleMoodSubmit()">Save Entry</button>
+                    
+                    <div class="submit-area">
+                        <button class="submit-btn" id="submit-btn" onclick="handleMoodSubmit()">Save Entry & Analyze Mood</button>
+                        <p class="submit-hint">✨ AI will automatically detect your mood from what you write</p>
+                    </div>
                 </div>
             </section>
 

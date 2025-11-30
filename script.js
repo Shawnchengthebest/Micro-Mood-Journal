@@ -363,30 +363,44 @@ function showAuthScreen() {
 }
 
 // ===== MOOD ENTRY HANDLERS =====
-function handleMoodSubmit() {
+async function handleMoodSubmit() {
     const text = document.getElementById('mood-text').value.trim();
-    
-    if (!selectedMood) {
-        showNotification('Please select a mood', 'error');
-        return;
-    }
+    const btn = document.getElementById('submit-btn');
 
     if (!text) {
         showNotification('Please write something', 'error');
         return;
     }
 
-    db.addEntry({
-        userId: currentUser.id,
-        mood: selectedMood,
-        text: text
-    });
+    // Show loading state
+    btn.classList.add('loading');
+    btn.textContent = '🔄 Analyzing mood...';
+    btn.disabled = true;
 
-    showNotification('Entry saved successfully!', 'success');
-    document.getElementById('mood-text').value = '';
-    document.querySelectorAll('.mood-btn').forEach(btn => btn.classList.remove('selected'));
-    selectedMood = null;
-    loadUserData();
+    try {
+        // Analyze the text with AI to determine mood
+        const analysis = await getMoodAnalysis(text);
+        const detectedMood = analysis.moodScore;
+
+        // Save the entry with the AI-detected mood
+        db.addEntry({
+            userId: currentUser.id,
+            mood: detectedMood,
+            text: text
+        });
+
+        showNotification(`✅ Entry saved! Mood detected: ${getMoodEmoji(detectedMood)}`, 'success');
+        document.getElementById('mood-text').value = '';
+        selectedMood = null;
+        loadUserData();
+    } catch (error) {
+        console.error('Error analyzing mood:', error);
+        showNotification('Error analyzing mood. Please try again.', 'error');
+    } finally {
+        btn.classList.remove('loading');
+        btn.textContent = 'Save Entry & Analyze Mood';
+        btn.disabled = false;
+    }
 }
 
 function handleMoodSelect(moodValue) {
