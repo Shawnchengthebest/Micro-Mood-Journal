@@ -54,7 +54,31 @@
             <!-- New Entry Section -->
             <section class="entry-section">
                 <div class="card">
-                    <h2>How are you feeling today?</h2>
+                    <div class="entry-header">
+                        <h2>How are you feeling today?</h2>
+                        <button class="ai-help-btn" onclick="toggleAIHelper()" title="Get AI Analysis">🤖 AI Assistant</button>
+                    </div>
+                    
+                    <!-- AI Helper Panel -->
+                    <div id="ai-helper" class="ai-helper hidden">
+                        <div class="ai-helper-content">
+                            <h3>AI Mood Assistant</h3>
+                            <p>Paste your thoughts below or write naturally, and let AI help analyze your mood:</p>
+                            <div class="ai-input-group">
+                                <textarea id="ai-analysis-input" placeholder="Tell me what's on your mind..." class="ai-textarea"></textarea>
+                                <button class="ai-analyze-btn" onclick="analyzeWithAI()">Analyze with AI</button>
+                            </div>
+                            <div id="ai-output" class="ai-output hidden">
+                                <h4>AI Analysis:</h4>
+                                <div id="ai-result" class="ai-result"></div>
+                                <div class="ai-actions">
+                                    <button class="ai-action-btn" onclick="applyAIAnalysis()">Use This Analysis</button>
+                                    <button class="ai-action-btn secondary" onclick="closeAIHelper()">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="mood-selector">
                         <button class="mood-btn" data-mood="1" title="Very Bad">😢</button>
                         <button class="mood-btn" data-mood="2" title="Bad">😟</button>

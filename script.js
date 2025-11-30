@@ -1,3 +1,99 @@
+// ===== AI CONFIGURATION =====
+// FREE AI API OPTIONS - Choose one that works best for you!
+//
+// 📊 COMPARISON TABLE:
+// ┌─────────────┬────────────┬──────────┬────────────┐
+// │ API         │ Free Tier  │ Quality  │ Speed      │
+// ├─────────────┼────────────┼──────────┼────────────┤
+// │ Groq ⭐     │ YES        │ Excellent│ Very Fast  │
+// │ Hugging Face│ YES        │ Good     │ Moderate   │
+// │ Together AI │ FREE $     │ Very Good│ Fast       │
+// │ Cohere      │ YES        │ Very Good│ Fast       │
+// │ OpenAI      │ Paid $$$   │ Best     │ Moderate   │
+// └─────────────┴────────────┴──────────┴────────────┘
+//
+// RECOMMENDED: Use Groq (fastest + free)
+//
+// SETUP INSTRUCTIONS:
+// 1. GROQ (Recommended):
+//    - Go to: https://console.groq.com/keys
+//    - Sign up (free)
+//    - Create an API key
+//    - Replace 'gsk_your-groq-api-key-here' with your key
+//    - Set ACTIVE_AI = 'groq'
+//
+// 2. HUGGING FACE (Free):
+//    - Go to: https://huggingface.co/settings/tokens
+//    - Create a free account
+//    - Generate an access token
+//    - Replace 'hf_your-token-here' with your token
+//    - Set ACTIVE_AI = 'huggingface'
+//
+// 3. COHERE (Free tier):
+//    - Go to: https://cohere.com/
+//    - Sign up (free)
+//    - Get your API key
+//    - Set ACTIVE_AI = 'cohere'
+//
+// 4. TOGETHER AI (Free credits):
+//    - Go to: https://www.together.ai/
+//    - Sign up (get free credits)
+//    - Get your API key
+//    - Set ACTIVE_AI = 'together'
+//
+// 5. OPENAI (Best quality, requires payment):
+//    - Go to: https://openai.com/api
+//    - Set up billing
+//    - Get your API key
+//    - Set ACTIVE_AI = 'openai'
+//
+// 6. LOCAL ONLY (No API needed):
+//    - Set ACTIVE_AI = 'local'
+//    - Uses keyword-based analysis (works offline!)
+
+// Option 1: OpenAI API (paid, high quality)
+const AI_CONFIG = {
+    apiKey: 'sk-proj-your-api-key-here', // Get from https://openai.com/api
+    model: 'gpt-3.5-turbo',
+    endpoint: 'https://api.openai.com/v1/chat/completions'
+};
+
+// Option 2: Hugging Face API (free tier available)
+// Get free token: https://huggingface.co/settings/tokens
+const HUGGING_FACE_CONFIG = {
+    apiKey: 'hf_your-token-here',
+    endpoint: 'https://api-inference.huggingface.co/models/facebook/blenderbot-400M-distill'
+};
+
+// Option 3: Groq API (FREE, very fast - recommended!)
+// Get free API key: https://console.groq.com/keys
+// IMPORTANT: Set your API key as environment variable GROQ_API_KEY
+// For development, add to a .env file or set in your deployment
+const GROQ_CONFIG = {
+    apiKey: localStorage.getItem('groq_api_key') || 'gsk_your-groq-api-key-here',
+    model: 'mixtral-8x7b-32768',
+    endpoint: 'https://api.groq.com/openai/v1/chat/completions'
+};
+
+// Option 4: Cohere API (free tier)
+// Get free API key: https://cohere.com/
+const COHERE_CONFIG = {
+    apiKey: 'your-cohere-api-key-here',
+    endpoint: 'https://api.cohere.ai/v1/generate'
+};
+
+// Option 5: Together AI (free credits)
+// Get free API key: https://www.together.ai/
+const TOGETHER_AI_CONFIG = {
+    apiKey: 'your-together-api-key-here',
+    model: 'meta-llama/Llama-2-7b-chat',
+    endpoint: 'https://api.together.xyz/v1/chat/completions'
+};
+
+// Set which API to use (1-5, or 'local')
+// Options: 'openai', 'huggingface', 'groq', 'cohere', 'together', 'local'
+const ACTIVE_AI = 'local'; // Change this to your chosen API
+
 // ===== DATABASE (localStorage) =====
 class Database {
     constructor() {
@@ -424,6 +520,384 @@ function clearAllData() {
     }
 }
 
+// ===== AI ANALYSIS FUNCTIONS =====
+let aiAnalysisResult = null;
+
+function toggleAIHelper() {
+    const helper = document.getElementById('ai-helper');
+    helper.classList.toggle('visible');
+    helper.classList.toggle('hidden');
+    if (helper.classList.contains('visible')) {
+        document.getElementById('ai-analysis-input').focus();
+    }
+}
+
+function closeAIHelper() {
+    const helper = document.getElementById('ai-helper');
+    helper.classList.remove('visible');
+    helper.classList.add('hidden');
+    const output = document.getElementById('ai-output');
+    output.classList.remove('visible');
+    output.classList.add('hidden');
+}
+
+async function analyzeWithAI() {
+    const text = document.getElementById('ai-analysis-input').value.trim();
+    
+    if (!text) {
+        showNotification('Please enter some text to analyze', 'error');
+        return;
+    }
+
+    const btn = event.target;
+    btn.classList.add('loading');
+    btn.textContent = 'Analyzing...';
+    btn.disabled = true;
+
+    try {
+        // Call the analysis function
+        aiAnalysisResult = await getMoodAnalysis(text);
+        
+        if (aiAnalysisResult) {
+            displayAIAnalysis(aiAnalysisResult);
+        } else {
+            showNotification('Could not analyze text. Please try again.', 'error');
+        }
+    } catch (error) {
+        console.error('AI Analysis error:', error);
+        showNotification('Error analyzing text. Check console and API key.', 'error');
+    } finally {
+        btn.classList.remove('loading');
+        btn.textContent = 'Analyze with AI';
+        btn.disabled = false;
+    }
+}
+
+async function getMoodAnalysis(text) {
+    // Try different APIs based on ACTIVE_AI setting
+    
+    if (ACTIVE_AI === 'openai') {
+        return await analyzeWithOpenAI(text);
+    } else if (ACTIVE_AI === 'groq') {
+        return await analyzeWithGroq(text);
+    } else if (ACTIVE_AI === 'huggingface') {
+        return await analyzeWithHuggingFace(text);
+    } else if (ACTIVE_AI === 'cohere') {
+        return await analyzeWithCohere(text);
+    } else if (ACTIVE_AI === 'together') {
+        return await analyzeWithTogether(text);
+    } else {
+        return generateLocalAnalysis(text);
+    }
+}
+
+// OpenAI Implementation
+async function analyzeWithOpenAI(text) {
+    try {
+        const response = await fetch(AI_CONFIG.endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${AI_CONFIG.apiKey}`
+            },
+            body: JSON.stringify({
+                model: AI_CONFIG.model,
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'You are a compassionate mood analysis assistant. Analyze the user\'s text and provide: 1) A mood score (1-5), 2) Key emotions detected, 3) Brief supportive advice. Keep response concise and helpful.'
+                    },
+                    {
+                        role: 'user',
+                        content: `Analyze my mood from this text: "${text}"`
+                    }
+                ],
+                max_tokens: 200,
+                temperature: 0.7
+            })
+        });
+
+        if (!response.ok) {
+            console.error('OpenAI Error:', response.status);
+            return generateLocalAnalysis(text);
+        }
+
+        const data = await response.json();
+        const analysisText = data.choices[0].message.content;
+        
+        return {
+            analysis: analysisText,
+            moodScore: extractMoodScore(analysisText),
+            source: 'openai'
+        };
+    } catch (error) {
+        console.log('OpenAI API failed:', error);
+        return generateLocalAnalysis(text);
+    }
+}
+
+// Groq Implementation (FREE - Recommended!)
+async function analyzeWithGroq(text) {
+    try {
+        const response = await fetch(GROQ_CONFIG.endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${GROQ_CONFIG.apiKey}`
+            },
+            body: JSON.stringify({
+                model: GROQ_CONFIG.model,
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'You are a mood analysis assistant. Analyze the mood and provide: mood score (1-5), emotions, and brief advice.'
+                    },
+                    {
+                        role: 'user',
+                        content: `Analyze mood: "${text}"`
+                    }
+                ],
+                max_tokens: 200,
+                temperature: 0.7
+            })
+        });
+
+        if (!response.ok) {
+            console.error('Groq Error:', response.status);
+            return generateLocalAnalysis(text);
+        }
+
+        const data = await response.json();
+        const analysisText = data.choices[0].message.content;
+        
+        return {
+            analysis: analysisText,
+            moodScore: extractMoodScore(analysisText),
+            source: 'groq'
+        };
+    } catch (error) {
+        console.log('Groq API failed:', error);
+        return generateLocalAnalysis(text);
+    }
+}
+
+// Hugging Face Implementation (FREE)
+async function analyzeWithHuggingFace(text) {
+    try {
+        const response = await fetch(HUGGING_FACE_CONFIG.endpoint, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${HUGGING_FACE_CONFIG.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                inputs: text
+            })
+        });
+
+        if (!response.ok) {
+            console.error('Hugging Face Error:', response.status);
+            return generateLocalAnalysis(text);
+        }
+
+        const data = await response.json();
+        const analysisText = Array.isArray(data) ? data[0]?.generated_text : data.generated_text;
+        
+        return {
+            analysis: analysisText || 'Analysis generated',
+            moodScore: extractMoodScore(text),
+            source: 'huggingface'
+        };
+    } catch (error) {
+        console.log('Hugging Face API failed:', error);
+        return generateLocalAnalysis(text);
+    }
+}
+
+// Cohere Implementation (FREE tier)
+async function analyzeWithCohere(text) {
+    try {
+        const response = await fetch(COHERE_CONFIG.endpoint, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${COHERE_CONFIG.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                prompt: `Analyze the mood and emotions in this text and provide a score 1-5. Text: "${text}". Provide: mood score, emotions, advice.`,
+                max_tokens: 200
+            })
+        });
+
+        if (!response.ok) {
+            console.error('Cohere Error:', response.status);
+            return generateLocalAnalysis(text);
+        }
+
+        const data = await response.json();
+        const analysisText = data.generations[0]?.text;
+        
+        return {
+            analysis: analysisText || 'Analysis generated',
+            moodScore: extractMoodScore(analysisText || text),
+            source: 'cohere'
+        };
+    } catch (error) {
+        console.log('Cohere API failed:', error);
+        return generateLocalAnalysis(text);
+    }
+}
+
+// Together AI Implementation (FREE credits)
+async function analyzeWithTogether(text) {
+    try {
+        const response = await fetch(TOGETHER_AI_CONFIG.endpoint, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${TOGETHER_AI_CONFIG.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: TOGETHER_AI_CONFIG.model,
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'Analyze mood and provide score 1-5, emotions, and brief advice.'
+                    },
+                    {
+                        role: 'user',
+                        content: `Analyze mood: "${text}"`
+                    }
+                ],
+                max_tokens: 200
+            })
+        });
+
+        if (!response.ok) {
+            console.error('Together AI Error:', response.status);
+            return generateLocalAnalysis(text);
+        }
+
+        const data = await response.json();
+        const analysisText = data.output?.choices?.[0]?.text || data.choices?.[0]?.message?.content;
+        
+        return {
+            analysis: analysisText || 'Analysis generated',
+            moodScore: extractMoodScore(analysisText || text),
+            source: 'together'
+        };
+    } catch (error) {
+        console.log('Together AI failed:', error);
+        return generateLocalAnalysis(text);
+    }
+}
+
+function generateLocalAnalysis(text) {
+    // Local mood analysis using keywords
+    const textLower = text.toLowerCase();
+    
+    // Define mood keywords
+    const sadKeywords = ['sad', 'depressed', 'lonely', 'upset', 'miserable', 'terrible', 'awful', 'hate', 'worst'];
+    const unhappyKeywords = ['bad', 'wrong', 'difficult', 'hard', 'frustrated', 'annoyed', 'disappointed'];
+    const neutralKeywords = ['okay', 'fine', 'alright', 'neutral', 'normal', 'average'];
+    const happyKeywords = ['good', 'happy', 'great', 'nice', 'fun', 'enjoyed', 'pleased'];
+    const excellentKeywords = ['excellent', 'amazing', 'fantastic', 'wonderful', 'love', 'best', 'awesome'];
+    
+    const countMatches = (keywords) => keywords.filter(kw => textLower.includes(kw)).length;
+    
+    const sadCount = countMatches(sadKeywords);
+    const unhappyCount = countMatches(unhappyKeywords);
+    const neutralCount = countMatches(neutralKeywords);
+    const happyCount = countMatches(happyKeywords);
+    const excellentCount = countMatches(excellentKeywords);
+    
+    let moodScore = 3;
+    if (excellentCount > 0) moodScore = 5;
+    else if (happyCount > unhappyCount) moodScore = 4;
+    else if (sadCount > 0) moodScore = 1;
+    else if (unhappyCount > happyCount) moodScore = 2;
+    
+    const emotions = [];
+    if (sadCount > 0) emotions.push('Sadness');
+    if (unhappyCount > 0) emotions.push('Frustration');
+    if (happyCount > 0) emotions.push('Joy');
+    if (excellentCount > 0) emotions.push('Elation');
+    
+    const advice = getMoodAdvice(moodScore);
+    
+    const analysis = `
+📊 **Mood Analysis**
+Detected Mood: ${getMoodEmoji(moodScore)} (${moodScore}/5)
+Emotions: ${emotions.length > 0 ? emotions.join(', ') : 'Neutral'}
+
+💭 **Insights:**
+${advice}
+
+Remember: Your feelings are valid. Consider journaling more details to track patterns.
+    `.trim();
+    
+    return {
+        analysis: analysis,
+        moodScore: moodScore,
+        source: 'local'
+    };
+}
+
+function getMoodAdvice(score) {
+    const advice = {
+        1: '💙 It sounds like you\'re going through a tough time. Consider reaching out to someone you trust, practicing self-care, or seeking professional support if needed.',
+        2: '💙 You seem a bit down. Try doing something you enjoy, spend time with friends, or take a break to recharge.',
+        3: '😐 You\'re feeling neutral. This is normal. Reflect on what could make your day better.',
+        4: '😊 You\'re in a good place! Enjoy this moment and consider what\'s making you feel positive.',
+        5: '🌟 You\'re feeling fantastic! Cherish this feeling and remember what brought you here for future reference.'
+    };
+    return advice[score] || advice[3];
+}
+
+function extractMoodScore(text) {
+    // Try to extract a mood score from the analysis text
+    const scoreMatch = text.match(/(\d)\/5|score[:\s]*(\d)|mood[:\s]*(\d)/i);
+    if (scoreMatch) {
+        const score = parseInt(scoreMatch[1] || scoreMatch[2] || scoreMatch[3]);
+        return Math.min(Math.max(score, 1), 5);
+    }
+    return 3;
+}
+
+function displayAIAnalysis(result) {
+    const output = document.getElementById('ai-output');
+    const resultDiv = document.getElementById('ai-result');
+    
+    resultDiv.textContent = result.analysis;
+    output.classList.add('visible');
+    output.classList.remove('hidden');
+}
+
+function applyAIAnalysis() {
+    if (!aiAnalysisResult) return;
+    
+    // Apply the suggested mood score
+    if (aiAnalysisResult.moodScore) {
+        selectedMood = aiAnalysisResult.moodScore;
+        document.querySelectorAll('.mood-btn').forEach(btn => {
+            btn.classList.remove('selected');
+            if (btn.dataset.mood === aiAnalysisResult.moodScore.toString()) {
+                btn.classList.add('selected');
+            }
+        });
+    }
+    
+    // Fill in the textarea with the analysis input
+    const analysisInput = document.getElementById('ai-analysis-input').value;
+    if (analysisInput) {
+        document.getElementById('mood-text').value = analysisInput;
+    }
+    
+    // Close the AI helper
+    closeAIHelper();
+    showNotification('Analysis applied! Review and submit when ready.', 'success');
+}
+
 // ===== EVENT LISTENERS =====
 function attachMoodButtonListeners() {
     document.querySelectorAll('.mood-btn').forEach(btn => {
@@ -431,6 +905,17 @@ function attachMoodButtonListeners() {
             handleMoodSelect(parseInt(btn.dataset.mood));
         });
     });
+}
+
+// ===== API KEY MANAGEMENT =====
+function setGroqApiKey(apiKey) {
+    localStorage.setItem('groq_api_key', apiKey);
+    GROQ_CONFIG.apiKey = apiKey;
+    console.log('Groq API key set successfully');
+}
+
+function getGroqApiKey() {
+    return localStorage.getItem('groq_api_key');
 }
 
 // ===== INITIALIZATION =====
