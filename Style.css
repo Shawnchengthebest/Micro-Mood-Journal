@@ -26,6 +26,10 @@ body {
     line-height: 1.6;
 }
 
+.hidden {
+    display: none !important;
+}
+
 /* ===== AUTH STYLES ===== */
 .auth-container {
     display: flex;

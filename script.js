@@ -159,12 +159,14 @@ function handleLogin() {
         currentUser = user;
         console.log('Current user set:', currentUser);
         sessionStorage.setItem('currentUser', JSON.stringify(user));
-        showAuthMessage(`Welcome back, ${user.name}!`, 'success');
-        console.log('About to call showApp');
+        
+        // Immediately show app without delay
+        showApp();
+        
+        // Show message after app is loaded
         setTimeout(() => {
-            console.log('Calling showApp');
-            showApp();
-        }, 500);
+            showNotification(`Welcome back, ${user.name}!`, 'success');
+        }, 100);
     } else {
         showAuthMessage('Invalid email or password', 'error');
     }
@@ -215,24 +217,37 @@ function handleLogout() {
 
 // ===== UI TRANSITIONS =====
 function showApp() {
-    console.log('showApp called');
-    const authContainer = document.getElementById('auth-container');
-    const appContainer = document.getElementById('app-container');
-    
-    console.log('Auth container:', authContainer);
-    console.log('App container:', appContainer);
-    
-    if (authContainer) authContainer.classList.add('hidden');
-    if (appContainer) appContainer.classList.remove('hidden');
-    
-    const userWelcome = document.getElementById('user-welcome');
-    if (userWelcome && currentUser) {
-        userWelcome.textContent = `Welcome, ${currentUser.name}!`;
+    try {
+        console.log('showApp called, currentUser:', currentUser);
+        
+        const authContainer = document.getElementById('auth-container');
+        const appContainer = document.getElementById('app-container');
+        
+        console.log('Auth container found:', !!authContainer);
+        console.log('App container found:', !!appContainer);
+        
+        if (authContainer) {
+            authContainer.classList.add('hidden');
+            console.log('Added hidden to auth-container');
+        }
+        
+        if (appContainer) {
+            appContainer.classList.remove('hidden');
+            console.log('Removed hidden from app-container');
+        }
+        
+        const userWelcome = document.getElementById('user-welcome');
+        if (userWelcome && currentUser) {
+            userWelcome.textContent = `Welcome, ${currentUser.name}!`;
+            console.log('Set user welcome text');
+        }
+        
+        console.log('About to load user data');
+        loadUserData();
+        console.log('showApp complete');
+    } catch (error) {
+        console.error('Error in showApp:', error);
     }
-    
-    console.log('About to load user data');
-    loadUserData();
-    console.log('showApp complete');
 }
 
 function showAuthScreen() {
