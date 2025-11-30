@@ -6,7 +6,16 @@ class Database {
 
     initializeDatabase() {
         if (!localStorage.getItem('users')) {
-            localStorage.setItem('users', JSON.stringify([]));
+            // Add demo user for testing
+            localStorage.setItem('users', JSON.stringify([
+                {
+                    id: 1000,
+                    name: 'Demo User',
+                    email: 'demo@example.com',
+                    password: 'demo123',
+                    createdAt: new Date().toISOString()
+                }
+            ]));
         }
         if (!localStorage.getItem('entries')) {
             localStorage.setItem('entries', JSON.stringify([]));
@@ -136,17 +145,26 @@ function handleLogin() {
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
 
+    console.log('Login attempt:', email, password);
+
     if (!email || !password) {
         showAuthMessage('Please fill in all fields', 'error');
         return;
     }
 
     const user = db.getUser(email, password);
+    console.log('User found:', user);
+    
     if (user) {
         currentUser = user;
+        console.log('Current user set:', currentUser);
         sessionStorage.setItem('currentUser', JSON.stringify(user));
         showAuthMessage(`Welcome back, ${user.name}!`, 'success');
-        setTimeout(() => showApp(), 500);
+        console.log('About to call showApp');
+        setTimeout(() => {
+            console.log('Calling showApp');
+            showApp();
+        }, 500);
     } else {
         showAuthMessage('Invalid email or password', 'error');
     }
@@ -197,10 +215,24 @@ function handleLogout() {
 
 // ===== UI TRANSITIONS =====
 function showApp() {
-    document.getElementById('auth-container').classList.add('hidden');
-    document.getElementById('app-container').classList.remove('hidden');
-    document.getElementById('user-welcome').textContent = `Welcome, ${currentUser.name}!`;
+    console.log('showApp called');
+    const authContainer = document.getElementById('auth-container');
+    const appContainer = document.getElementById('app-container');
+    
+    console.log('Auth container:', authContainer);
+    console.log('App container:', appContainer);
+    
+    if (authContainer) authContainer.classList.add('hidden');
+    if (appContainer) appContainer.classList.remove('hidden');
+    
+    const userWelcome = document.getElementById('user-welcome');
+    if (userWelcome && currentUser) {
+        userWelcome.textContent = `Welcome, ${currentUser.name}!`;
+    }
+    
+    console.log('About to load user data');
     loadUserData();
+    console.log('showApp complete');
 }
 
 function showAuthScreen() {
