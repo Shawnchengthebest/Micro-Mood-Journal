@@ -522,6 +522,98 @@ function clearAllData() {
 
 // ===== AI ANALYSIS FUNCTIONS =====
 let aiAnalysisResult = null;
+let aiMoodSuggestion = null;
+
+// Analyze today's mood from journal entries
+async function analyzeCurrentMood() {
+    const todayEntries = getTodayEntries();
+    
+    if (todayEntries.length === 0) {
+        showNotification('No journal entries yet today. Start writing to get AI mood analysis!', 'error');
+        return;
+    }
+
+    // Combine all today's entries into one text
+    const allText = todayEntries.map(e => e.text).join(' ');
+    
+    const btn = event.target;
+    btn.classList.add('loading');
+    btn.textContent = '🔄 Analyzing...';
+    btn.disabled = true;
+
+    try {
+        aiMoodSuggestion = await getMoodAnalysis(allText);
+        
+        if (aiMoodSuggestion) {
+            displayMoodSuggestion(aiMoodSuggestion);
+        } else {
+            showNotification('Could not analyze mood. Please try again.', 'error');
+        }
+    } catch (error) {
+        console.error('AI Analysis error:', error);
+        showNotification('Error analyzing mood. Make sure API key is set.', 'error');
+    } finally {
+        btn.classList.remove('loading');
+        btn.textContent = '🤖 Analyze Today';
+        btn.disabled = false;
+    }
+}
+
+// Get entries from today
+function getTodayEntries() {
+    const allEntries = db.getUserEntries(currentUser.id);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return allEntries.filter(entry => {
+        const entryDate = new Date(entry.createdAt);
+        entryDate.setHours(0, 0, 0, 0);
+        return entryDate.getTime() === today.getTime();
+    });
+}
+
+// Display the mood suggestion
+function displayMoodSuggestion(result) {
+    const suggestion = document.getElementById('ai-suggestion');
+    const resultDiv = document.getElementById('ai-suggestion-result');
+    
+    resultDiv.innerHTML = `
+        <div style="text-align: center; margin-bottom: 12px;">
+            <span style="font-size: 2rem;">${getMoodEmoji(result.moodScore)}</span>
+            <p style="font-size: 1.2rem; font-weight: bold; color: var(--primary);">Mood Level: ${result.moodScore}/5</p>
+        </div>
+        <p>${result.analysis}</p>
+    `;
+    
+    suggestion.classList.add('visible');
+    suggestion.classList.remove('hidden');
+}
+
+// Accept the AI suggestion and apply it
+function acceptAISuggestion() {
+    if (!aiMoodSuggestion) return;
+    
+    // Set the mood
+    if (aiMoodSuggestion.moodScore) {
+        selectedMood = aiMoodSuggestion.moodScore;
+        document.querySelectorAll('.mood-btn').forEach(btn => {
+            btn.classList.remove('selected');
+            if (btn.dataset.mood === aiMoodSuggestion.moodScore.toString()) {
+                btn.classList.add('selected');
+            }
+        });
+    }
+    
+    dismissAISuggestion();
+    showNotification('✅ Mood suggestion applied! Review and save when ready.', 'success');
+}
+
+// Dismiss the suggestion
+function dismissAISuggestion() {
+    const suggestion = document.getElementById('ai-suggestion');
+    suggestion.classList.remove('visible');
+    suggestion.classList.add('hidden');
+}
 
 function toggleAIHelper() {
     const helper = document.getElementById('ai-helper');

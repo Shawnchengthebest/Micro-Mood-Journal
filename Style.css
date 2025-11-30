@@ -282,6 +282,40 @@ body {
     animation: slideIn 0.3s ease-out;
 }
 
+.ai-suggestion {
+    background: linear-gradient(135deg, #E8F5E9, #F0F4FF);
+    border: 2px solid var(--success);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    display: none;
+}
+
+.ai-suggestion.visible {
+    display: block;
+    animation: slideIn 0.3s ease-out;
+}
+
+.ai-suggestion-content h3 {
+    color: var(--success);
+    margin-bottom: 16px;
+}
+
+.ai-suggestion-result {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    line-height: 1.6;
+    color: var(--text-primary);
+}
+
+.ai-suggestion-actions {
+    display: flex;
+    gap: 12px;
+}
+
 .ai-helper-content h3 {
     color: var(--primary);
     margin-bottom: 12px;
@@ -368,6 +402,7 @@ body {
     max-height: 200px;
     overflow-y: auto;
 }
+
 
 .ai-actions {
     display: flex;
