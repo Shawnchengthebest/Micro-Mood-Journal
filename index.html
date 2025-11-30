@@ -68,6 +68,25 @@
                 </div>
             </section>
 
+            <!-- Calendar & Chart Row -->
+            <section class="calendar-chart-row">
+                <div class="card calendar-card">
+                    <div class="calendar-header">
+                        <button class="cal-nav" onclick="prevMonth()">◀</button>
+                        <h3 id="calendar-month-year">Month</h3>
+                        <button class="cal-nav" onclick="nextMonth()">▶</button>
+                    </div>
+                    <div id="calendar" class="calendar-grid"></div>
+                    <p class="calendar-hint">Click a date to add/view journal entries for that day.</p>
+                </div>
+
+                <div class="card chart-card">
+                    <h3>Mood Over Time</h3>
+                    <canvas id="moodChart" width="400" height="180"></canvas>
+                    <p class="chart-hint">Monthly average mood (last 12 months)</p>
+                </div>
+            </section>
+
             <!-- Stats Section -->
             <section class="stats-section">
                 <div class="stats-grid">
@@ -112,6 +131,7 @@
         </main>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

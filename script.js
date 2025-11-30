@@ -153,7 +153,8 @@ class Database {
         entries.push({
             ...entry,
             id: Date.now(),
-            createdAt: new Date().toISOString()
+            // allow passing createdAt (for calendar date); otherwise use now
+            createdAt: entry.createdAt ? new Date(entry.createdAt).toISOString() : new Date().toISOString()
         });
         localStorage.setItem('entries', JSON.stringify(entries));
     }
@@ -178,6 +179,10 @@ const db = new Database();
 let currentUser = null;
 let sortOrder = 'desc';
 let selectedMood = null;
+let selectedCalendarDate = null; // ISO date string (yyyy-mm-dd)
+let calYear = null;
+let calMonth = null; // 0-based
+let moodChart = null;
 
 // ===== HELPER FUNCTIONS =====
 function showAuthMessage(message, type) {
@@ -340,6 +345,9 @@ function showApp() {
         
         console.log('About to load user data');
         loadUserData();
+        // initialize calendar and chart
+        startCalendar();
+        renderMoodChart();
         console.log('showApp complete');
     } catch (error) {
         console.error('Error in showApp:', error);
@@ -383,15 +391,25 @@ async function handleMoodSubmit() {
         const detectedMood = analysis.moodScore;
 
         // Save the entry with the AI-detected mood
-        db.addEntry({
+        const entryObj = {
             userId: currentUser.id,
             mood: detectedMood,
             text: text
-        });
+        };
+        if (selectedCalendarDate) {
+            // store the date (set time to midday to avoid timezone issues)
+            const d = new Date(selectedCalendarDate + 'T12:00:00');
+            entryObj.createdAt = d.toISOString();
+        }
+        db.addEntry(entryObj);
 
         showNotification(`✅ Entry saved! Mood detected: ${getMoodEmoji(detectedMood)}`, 'success');
         document.getElementById('mood-text').value = '';
         selectedMood = null;
+        selectedCalendarDate = null;
+        // re-render calendar and chart
+        renderCalendar(calYear, calMonth);
+        renderMoodChart();
         loadUserData();
     } catch (error) {
         console.error('Error analyzing mood:', error);
@@ -646,6 +664,175 @@ function closeAIHelper() {
     output.classList.remove('visible');
     output.classList.add('hidden');
 }
+
+// ===== CALENDAR & CHART FUNCTIONS =====
+function startCalendar() {
+    const today = new Date();
+    calYear = today.getFullYear();
+    calMonth = today.getMonth();
+    renderCalendar(calYear, calMonth);
+}
+
+function prevMonth() {
+    calMonth -= 1;
+    if (calMonth < 0) { calMonth = 11; calYear -= 1; }
+    renderCalendar(calYear, calMonth);
+}
+
+function nextMonth() {
+    calMonth += 1;
+    if (calMonth > 11) { calMonth = 0; calYear += 1; }
+    renderCalendar(calYear, calMonth);
+}
+
+function renderCalendar(year, month) {
+    const calendarEl = document.getElementById('calendar');
+    const title = document.getElementById('calendar-month-year');
+    title.textContent = new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' });
+    calendarEl.innerHTML = '';
+
+    // first day of month
+    const first = new Date(year, month, 1);
+    const startDay = first.getDay(); // 0-6
+    // number of days in month
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // previous month days to show
+    const prevDays = startDay;
+    const prevMonthLast = new Date(year, month, 0).getDate();
+
+    // get all user entries to mark days
+    const entries = db.getUserEntries(currentUser.id);
+    const entryDates = new Set(entries.map(e => (new Date(e.createdAt)).toISOString().slice(0,10)));
+
+    // Render 6 weeks grid (42 cells)
+    for (let i = 0; i < 42; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'day';
+
+        let dayNum = i - prevDays + 1;
+        let cellDate = null;
+        if (i < prevDays) {
+            // previous month
+            const d = prevMonthLast - (prevDays - 1 - i);
+            cell.textContent = d;
+            cell.classList.add('other-month');
+            const dt = new Date(year, month -1, d);
+            cellDate = dt.toISOString().slice(0,10);
+        } else if (dayNum <= daysInMonth) {
+            // current month
+            cell.textContent = dayNum;
+            const dt = new Date(year, month, dayNum);
+            cellDate = dt.toISOString().slice(0,10);
+        } else {
+            // next month
+            const d = dayNum - daysInMonth;
+            cell.textContent = d;
+            cell.classList.add('other-month');
+            const dt = new Date(year, month +1, d);
+            cellDate = dt.toISOString().slice(0,10);
+        }
+
+        // mark if there are entries on that date
+        if (entryDates.has(cellDate)) {
+            const mark = document.createElement('div');
+            mark.style.fontSize = '0.9rem';
+            mark.style.marginTop = '6px';
+            mark.textContent = '•';
+            cell.appendChild(mark);
+        }
+
+        // click handler
+        cell.addEventListener('click', () => {
+            selectCalendarDate(cellDate);
+        });
+
+        // highlight selected
+        if (selectedCalendarDate && selectedCalendarDate === cellDate) {
+            cell.classList.add('selected');
+        }
+
+        calendarEl.appendChild(cell);
+    }
+}
+
+function selectCalendarDate(dateISO) {
+    selectedCalendarDate = dateISO; // yyyy-mm-dd
+    // update selected visuals
+    document.querySelectorAll('.calendar-grid .day').forEach(el => {
+        el.classList.remove('selected');
+        if (el.textContent && (new Date(dateISO)).getDate().toString() === el.textContent) {
+            // rough match: ensure in same month
+            el.classList.add('selected');
+        }
+    });
+    // bring focus to journal box and prefill if there is an entry for that date (optional)
+    const entries = db.getUserEntries(currentUser.id).filter(e => new Date(e.createdAt).toISOString().slice(0,10) === dateISO);
+    if (entries.length > 0) {
+        // show latest entry for that day in the textarea for editing/new
+        document.getElementById('mood-text').value = entries[0].text;
+    } else {
+        document.getElementById('mood-text').value = '';
+    }
+    document.getElementById('mood-text').scrollIntoView({ behavior: 'smooth' });
+}
+
+function renderMoodChart() {
+    if (!currentUser) return;
+    const allEntries = db.getUserEntries(currentUser.id);
+    // compute last 12 months
+    const now = new Date();
+    const labels = [];
+    const averages = [];
+
+    for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthKey = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+        labels.push(d.toLocaleString('default', { month: 'short', year: 'numeric' }));
+
+        // filter entries in this month
+        const monthEntries = allEntries.filter(e => {
+            const dt = new Date(e.createdAt);
+            return dt.getFullYear() === d.getFullYear() && dt.getMonth() === d.getMonth();
+        });
+        if (monthEntries.length === 0) {
+            averages.push(null);
+        } else {
+            const avg = monthEntries.reduce((s, x) => s + x.mood, 0) / monthEntries.length;
+            averages.push(Number(avg.toFixed(2)));
+        }
+    }
+
+    // create or update chart
+    const ctx = document.getElementById('moodChart').getContext('2d');
+    if (moodChart) {
+        moodChart.data.labels = labels;
+        moodChart.data.datasets[0].data = averages;
+        moodChart.update();
+    } else {
+        moodChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Average Mood',
+                    data: averages,
+                    borderColor: 'rgba(74,144,226,0.9)',
+                    backgroundColor: 'rgba(74,144,226,0.2)',
+                    tension: 0.3,
+                    spanGaps: true
+                }]
+            },
+            options: {
+                scales: {
+                    y: { min: 1, max: 5, ticks: { stepSize: 1 } }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+}
+
 
 async function analyzeWithAI() {
     const text = document.getElementById('ai-analysis-input').value.trim();

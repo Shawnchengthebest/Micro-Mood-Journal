@@ -524,6 +524,75 @@ body {
     margin: 0;
 }
 
+/* Calendar & Chart Row */
+.calendar-chart-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+    margin-bottom: 24px;
+}
+
+.calendar-card .calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.cal-nav {
+    background: var(--background);
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+}
+
+.calendar-grid .day {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    min-height: 60px;
+    cursor: pointer;
+}
+
+.calendar-grid .day.other-month {
+    opacity: 0.4;
+}
+
+.calendar-grid .day.selected {
+    border-color: var(--primary);
+    box-shadow: var(--shadow);
+    background: linear-gradient(135deg, rgba(74,144,226,0.08), rgba(123,104,238,0.04));
+}
+
+.calendar-hint {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-top: 8px;
+    text-align: center;
+}
+
+.chart-card canvas {
+    width: 100% !important;
+    height: auto !important;
+}
+
+@media (max-width: 900px) {
+    .calendar-chart-row {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Stats Section */
 .stats-section {
     margin-bottom: 24px;
