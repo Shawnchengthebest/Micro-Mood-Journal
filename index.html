@@ -4,24 +4,112 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Micro Mood Journal</title>
-    <link rel="icon" type="image/x-icon" href="static/favicon.ico">
-    <link rel="stylesheet" href="static/styles.css">
+    <link rel="stylesheet" href="Style.css">
 </head>
 <body>
-    <header>
-        <h1>Micro Mood Journal</h1>
-    </header>
-    <main>
-        <section id="mood-input">
-            <h2>How are you feeling today?</h2>
-            <textarea id="mood-text" placeholder="Share your thoughts..."></textarea>
-            <button id="submit-mood">Submit</button>
-        </section>
-        <section id="mood-history">
-            <h2>Your Mood History</h2>
-            <ul id="mood-list"></ul>
-        </section>
-    </main>
-    <script src="static/scripts.js"></script>
+    <!-- Login Screen -->
+    <div id="auth-container" class="auth-container">
+        <div class="auth-card">
+            <h1 class="auth-title">Micro Mood Journal</h1>
+            <p class="auth-subtitle">Track your daily emotions</p>
+            
+            <!-- Login Form -->
+            <div id="login-form" class="auth-form active">
+                <h2>Welcome Back</h2>
+                <input type="email" id="login-email" placeholder="Email" class="auth-input" required>
+                <input type="password" id="login-password" placeholder="Password" class="auth-input" required>
+                <button class="auth-button" onclick="handleLogin()">Login</button>
+                <p class="auth-switch">Don't have an account? <a href="#" onclick="switchToSignUp(event)">Sign Up</a></p>
+            </div>
+
+            <!-- Sign Up Form -->
+            <div id="signup-form" class="auth-form">
+                <h2>Create Account</h2>
+                <input type="text" id="signup-name" placeholder="Full Name" class="auth-input" required>
+                <input type="email" id="signup-email" placeholder="Email" class="auth-input" required>
+                <input type="password" id="signup-password" placeholder="Password" class="auth-input" required>
+                <input type="password" id="signup-confirm" placeholder="Confirm Password" class="auth-input" required>
+                <button class="auth-button" onclick="handleSignUp()">Create Account</button>
+                <p class="auth-switch">Already have an account? <a href="#" onclick="switchToLogin(event)">Login</a></p>
+            </div>
+
+            <div id="auth-message" class="auth-message"></div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app-container" class="app-container hidden">
+        <header class="app-header">
+            <div class="header-content">
+                <h1>Micro Mood Journal</h1>
+                <div class="header-actions">
+                    <span id="user-welcome" class="user-welcome"></span>
+                    <button class="logout-btn" onclick="handleLogout()">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="app-main">
+            <!-- New Entry Section -->
+            <section class="entry-section">
+                <div class="card">
+                    <h2>How are you feeling today?</h2>
+                    <div class="mood-selector">
+                        <button class="mood-btn" data-mood="1" title="Very Bad">😢</button>
+                        <button class="mood-btn" data-mood="2" title="Bad">😟</button>
+                        <button class="mood-btn" data-mood="3" title="Neutral">😐</button>
+                        <button class="mood-btn" data-mood="4" title="Good">🙂</button>
+                        <button class="mood-btn" data-mood="5" title="Excellent">😄</button>
+                    </div>
+                    <textarea id="mood-text" placeholder="Share your thoughts, feelings, and what's on your mind..." class="mood-textarea"></textarea>
+                    <button class="submit-btn" onclick="handleMoodSubmit()">Save Entry</button>
+                </div>
+            </section>
+
+            <!-- Stats Section -->
+            <section class="stats-section">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total Entries</h3>
+                        <p id="total-entries" class="stat-number">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Average Mood</h3>
+                        <p id="avg-mood" class="stat-number">N/A</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Current Streak</h3>
+                        <p id="streak" class="stat-number">0 days</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- History Section -->
+            <section class="history-section">
+                <div class="card">
+                    <div class="history-header">
+                        <h2>Your Mood History</h2>
+                        <button class="sort-btn" onclick="toggleSortOrder()">Sort ↓</button>
+                    </div>
+                    <div id="mood-list" class="mood-list"></div>
+                </div>
+            </section>
+
+            <!-- Admin Panel -->
+            <section class="admin-section">
+                <div class="card">
+                    <h2>User Database</h2>
+                    <div class="admin-controls">
+                        <button class="admin-btn" onclick="viewAllUsers()">View All Users</button>
+                        <button class="admin-btn" onclick="viewAllEntries()">View All Entries</button>
+                        <button class="admin-btn danger" onclick="clearAllData()">Clear All Data</button>
+                    </div>
+                    <div id="admin-output" class="admin-output"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
