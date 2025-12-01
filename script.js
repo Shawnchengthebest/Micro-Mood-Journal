@@ -305,23 +305,30 @@ class Database {
     async ensureFirebaseReady() {
         return new Promise((resolve) => {
             if (window.auth && window.db) {
+                console.log('Firebase already ready');
                 resolve();
-            } else {
-                // Wait up to 5 seconds for Firebase to load
-                let attempts = 0;
-                const checkInterval = setInterval(() => {
-                    if (window.auth && window.db) {
-                        clearInterval(checkInterval);
-                        resolve();
-                    }
-                    attempts++;
-                    if (attempts > 50) { // 50 * 100ms = 5 seconds
-                        clearInterval(checkInterval);
-                        console.error('Firebase failed to load');
-                        resolve(); // resolve anyway to avoid hanging
-                    }
-                }, 100);
+                return;
             }
+            
+            console.log('Waiting for Firebase to load...');
+            
+            // Wait up to 10 seconds for Firebase to load
+            let attempts = 0;
+            const checkInterval = setInterval(() => {
+                if (window.auth && window.db) {
+                    clearInterval(checkInterval);
+                    console.log('Firebase loaded successfully');
+                    resolve();
+                }
+                attempts++;
+                if (attempts > 100) { // 100 * 100ms = 10 seconds
+                    clearInterval(checkInterval);
+                    console.error('Firebase failed to load after 10 seconds');
+                    console.error('window.auth:', typeof window.auth);
+                    console.error('window.db:', typeof window.db);
+                    resolve(); // resolve anyway to avoid hanging
+                }
+            }, 100);
         });
     }
 }
