@@ -94,88 +94,179 @@ const TOGETHER_AI_CONFIG = {
 // Options: 'openai', 'huggingface', 'groq', 'cohere', 'together', 'local'
 const ACTIVE_AI = 'local'; // Change this to your chosen API
 
-// ===== DATABASE (localStorage) =====
+// ===== DATABASE (Firebase) =====
 class Database {
     constructor() {
-        this.initializeDatabase();
+        this.initialized = false;
+        this.init();
     }
 
-    initializeDatabase() {
-        if (!localStorage.getItem('users')) {
-            // Add demo user for testing
-            localStorage.setItem('users', JSON.stringify([
-                {
-                    id: 1000,
-                    name: 'Demo User',
-                    email: 'demo@example.com',
-                    password: 'demo123',
-                    createdAt: new Date().toISOString()
+    async init() {
+        try {
+            // Wait for Firebase to initialize
+            await auth.authStateChanged((user) => {
+                if (user) {
+                    currentUser = {
+                        id: user.uid,
+                        email: user.email,
+                        name: user.displayName || 'User'
+                    };
+                    sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    console.log('User logged in from Firebase:', currentUser);
+                } else {
+                    currentUser = null;
+                    sessionStorage.removeItem('currentUser');
                 }
-            ]));
+            });
+            this.initialized = true;
+        } catch (error) {
+            console.error('Database init error:', error);
         }
-        if (!localStorage.getItem('entries')) {
-            localStorage.setItem('entries', JSON.stringify([]));
+    }
+
+    async addUser(user) {
+        try {
+            // Create user with Firebase Auth
+            const userCredential = await auth.createUserWithEmailAndPassword(user.email, user.password);
+            const uid = userCredential.user.uid;
+            
+            // Store user profile in Firestore
+            await db.collection('users').doc(uid).set({
+                email: user.email,
+                name: user.name,
+                createdAt: new Date().toISOString()
+            });
+            
+            return { success: true };
+        } catch (error) {
+            if (error.code === 'auth/email-already-in-use') {
+                return { success: false, message: 'Email already registered' };
+            }
+            return { success: false, message: error.message };
         }
     }
 
-    // User Management
-    addUser(user) {
-        const users = JSON.parse(localStorage.getItem('users'));
-        if (users.some(u => u.email === user.email)) {
-            return { success: false, message: 'Email already exists' };
+    async getUser(email, password) {
+        try {
+            const userCredential = await auth.signInWithEmailAndPassword(email, password);
+            const user = userCredential.user;
+            
+            // Get user profile from Firestore
+            const docSnap = await db.collection('users').doc(user.uid).get();
+            if (docSnap.exists) {
+                return {
+                    id: user.uid,
+                    email: user.email,
+                    name: docSnap.data().name
+                };
+            }
+            return null;
+        } catch (error) {
+            console.error('Login error:', error);
+            return null;
         }
-        users.push({
-            ...user,
-            id: Date.now(),
-            createdAt: new Date().toISOString()
-        });
-        localStorage.setItem('users', JSON.stringify(users));
-        return { success: true, message: 'User created successfully' };
     }
 
-    getUser(email, password) {
-        const users = JSON.parse(localStorage.getItem('users'));
-        return users.find(u => u.email === email && u.password === password);
+    async getUserById(id) {
+        try {
+            const docSnap = await db.collection('users').doc(id).get();
+            if (docSnap.exists) {
+                return {
+                    id: id,
+                    ...docSnap.data()
+                };
+            }
+            return null;
+        } catch (error) {
+            console.error('Get user error:', error);
+            return null;
+        }
     }
 
-    getUserById(id) {
-        const users = JSON.parse(localStorage.getItem('users'));
-        return users.find(u => u.id === id);
+    async getAllUsers() {
+        try {
+            const snapshot = await db.collection('users').get();
+            const users = [];
+            snapshot.forEach(doc => {
+                users.push({ id: doc.id, ...doc.data() });
+            });
+            return users;
+        } catch (error) {
+            console.error('Get all users error:', error);
+            return [];
+        }
     }
 
-    getAllUsers() {
-        return JSON.parse(localStorage.getItem('users'));
+    async addEntry(entry) {
+        try {
+            if (!currentUser) {
+                throw new Error('User not logged in');
+            }
+            
+            const entryData = {
+                userId: currentUser.id,
+                mood: entry.mood,
+                text: entry.text,
+                createdAt: entry.createdAt || new Date().toISOString()
+            };
+            
+            const docRef = await db.collection('entries').add(entryData);
+            return { success: true, id: docRef.id };
+        } catch (error) {
+            console.error('Add entry error:', error);
+            return { success: false, message: error.message };
+        }
     }
 
-    // Entry Management
-    addEntry(entry) {
-        const entries = JSON.parse(localStorage.getItem('entries'));
-        entries.push({
-            ...entry,
-            id: Date.now(),
-            // allow passing createdAt (for calendar date); otherwise use now
-            createdAt: entry.createdAt ? new Date(entry.createdAt).toISOString() : new Date().toISOString()
-        });
-        localStorage.setItem('entries', JSON.stringify(entries));
+    async getUserEntries(userId) {
+        try {
+            const snapshot = await db.collection('entries')
+                .where('userId', '==', userId)
+                .orderBy('createdAt', 'desc')
+                .get();
+            
+            const entries = [];
+            snapshot.forEach(doc => {
+                entries.push({ id: doc.id, ...doc.data() });
+            });
+            return entries;
+        } catch (error) {
+            console.error('Get user entries error:', error);
+            return [];
+        }
     }
 
-    getUserEntries(userId) {
-        const entries = JSON.parse(localStorage.getItem('entries'));
-        return entries.filter(e => e.userId === userId);
+    async getAllEntries() {
+        try {
+            const snapshot = await db.collection('entries').get();
+            const entries = [];
+            snapshot.forEach(doc => {
+                entries.push({ id: doc.id, ...doc.data() });
+            });
+            return entries;
+        } catch (error) {
+            console.error('Get all entries error:', error);
+            return [];
+        }
     }
 
-    getAllEntries() {
-        return JSON.parse(localStorage.getItem('entries'));
-    }
-
-    deleteAllData() {
-        localStorage.setItem('users', JSON.stringify([]));
-        localStorage.setItem('entries', JSON.stringify([]));
+    async deleteAllData() {
+        try {
+            // Delete all entries for current user
+            const entries = await this.getUserEntries(currentUser.id);
+            for (const entry of entries) {
+                await db.collection('entries').doc(entry.id).delete();
+            }
+            return { success: true };
+        } catch (error) {
+            console.error('Delete data error:', error);
+            return { success: false, message: error.message };
+        }
     }
 }
 
 // ===== STATE MANAGEMENT =====
-const db = new Database();
+const database = new Database();
 let currentUser = null;
 let sortOrder = 'desc';
 let selectedMood = null;
@@ -183,6 +274,8 @@ let selectedCalendarDate = null; // ISO date string (yyyy-mm-dd)
 let calYear = null;
 let calMonth = null; // 0-based
 let moodChart = null;
+
+// Use 'database' variable for Firebase calls (was 'db' before, but db is now Firestore)
 
 // ===== HELPER FUNCTIONS =====
 function showAuthMessage(message, type) {
@@ -334,37 +427,40 @@ function saveMoodAndCloseAdvice() {
         ? new Date(selectedCalendarDate + 'T12:00:00').toISOString()
         : new Date().toISOString();
     
-    db.addEntry({
+    database.addEntry({
         userId: currentUser.id,
         mood: pendingMoodData.moodScore,
         text: moodText,
         createdAt: createdAt
+    }).then(() => {
+        // Clear and refresh UI
+        document.getElementById('mood-text').value = '';
+        selectedCalendarDate = null;
+        loadUserData();
+        renderMoodChart();
+        renderCalendar(calYear, calMonth);
+        
+        closeMoodAdvice();
+        showNotification(`✅ Entry saved with mood ${pendingMoodData.moodScore}/5!`, 'success');
+    }).catch(error => {
+        console.error('Error saving entry:', error);
+        showNotification('Error saving entry. Please try again.', 'error');
     });
-    
-    // Clear and refresh UI
-    document.getElementById('mood-text').value = '';
-    selectedCalendarDate = null;
-    loadUserData();
-    renderMoodChart();
-    renderCalendar(calYear, calMonth);
-    
-    closeMoodAdvice();
-    showNotification(`✅ Entry saved with mood ${pendingMoodData.moodScore}/5!`, 'success');
 }
 
 // ===== AUTHENTICATION HANDLERS =====
-function handleLogin() {
+async function handleLogin() {
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
 
-    console.log('Login attempt:', email, password);
+    console.log('Login attempt:', email);
 
     if (!email || !password) {
         showAuthMessage('Please fill in all fields', 'error');
         return;
     }
 
-    const user = db.getUser(email, password);
+    const user = await database.getUser(email, password);
     console.log('User found:', user);
     
     if (user) {
@@ -385,7 +481,7 @@ function handleLogin() {
     }
 }
 
-function handleSignUp() {
+async function handleSignUp() {
     const name = document.getElementById('signup-name').value.trim();
     const email = document.getElementById('signup-email').value.trim();
     const password = document.getElementById('signup-password').value;
@@ -406,7 +502,7 @@ function handleSignUp() {
         return;
     }
 
-    const result = db.addUser({ name, email, password });
+    const result = await database.addUser({ name, email, password });
     if (result.success) {
         showAuthMessage('Account created! Please login.', 'success');
         setTimeout(() => switchToLogin({ preventDefault: () => {} }), 500);
@@ -544,8 +640,8 @@ function handleMoodSelect(moodValue) {
 }
 
 // ===== DATA LOADING & DISPLAY =====
-function loadUserData() {
-    const entries = db.getUserEntries(currentUser.id);
+async function loadUserData() {
+    const entries = await database.getUserEntries(currentUser.id);
     displayStats(entries);
     displayHistory(entries);
     attachMoodButtonListeners();
@@ -617,13 +713,12 @@ function displayHistory(entries) {
 
 function toggleSortOrder() {
     sortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
-    const entries = db.getUserEntries(currentUser.id);
-    displayHistory(entries);
+    loadUserData();
 }
 
 // ===== ADMIN FUNCTIONS =====
-function viewAllUsers() {
-    const users = db.getAllUsers();
+async function viewAllUsers() {
+    const users = await database.getAllUsers();
     const output = document.getElementById('admin-output');
     
     if (users.length === 0) {
@@ -638,8 +733,8 @@ function viewAllUsers() {
     output.textContent = formatted;
 }
 
-function viewAllEntries() {
-    const entries = db.getAllEntries();
+async function viewAllEntries() {
+    const entries = await database.getAllEntries();
     const output = document.getElementById('admin-output');
     
     if (entries.length === 0) {
@@ -647,20 +742,22 @@ function viewAllEntries() {
         return;
     }
 
-    const formatted = entries.map(entry => {
-        const user = db.getUserById(entry.userId);
+    const formatted = entries.map(async entry => {
+        const user = await database.getUserById(entry.userId);
         const userName = user ? user.name : 'Unknown';
         return `User: ${userName}\nMood: ${getMoodEmoji(entry.mood)} (${entry.mood}/5)\nText: ${entry.text}\nDate: ${formatDate(entry.createdAt)}\n`;
-    }).join('\n---\n');
+    });
 
-    output.textContent = formatted;
+    Promise.all(formatted).then(results => {
+        output.textContent = results.join('\n---\n');
+    });
 }
 
-function clearAllData() {
-    if (confirm('Are you sure? This will delete ALL users and entries. This cannot be undone!')) {
-        db.deleteAllData();
-        showNotification('All data cleared', 'success');
-        showAuthScreen();
+async function clearAllData() {
+    if (confirm('Are you sure? This will delete ALL entries. This cannot be undone!')) {
+        await database.deleteAllData();
+        showNotification('All entries cleared', 'success');
+        loadUserData();
     }
 }
 
@@ -704,8 +801,9 @@ async function analyzeCurrentMood() {
 }
 
 // Get entries from today
-function getTodayEntries() {
-    const allEntries = db.getUserEntries(currentUser.id);
+async function getTodayEntries() {
+    if (!currentUser) return [];
+    const allEntries = await database.getUserEntries(currentUser.id);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -814,57 +912,60 @@ function renderCalendar(year, month) {
     const prevMonthLast = new Date(year, month, 0).getDate();
 
     // get all user entries to mark days
-    const entries = db.getUserEntries(currentUser.id);
-    const entryDates = new Set(entries.map(e => (new Date(e.createdAt)).toISOString().slice(0,10)));
+    if (currentUser) {
+        database.getUserEntries(currentUser.id).then(entries => {
+            const entryDates = new Set(entries.map(e => (new Date(e.createdAt)).toISOString().slice(0,10)));
 
-    // Render 6 weeks grid (42 cells)
-    for (let i = 0; i < 42; i++) {
-        const cell = document.createElement('div');
-        cell.className = 'day';
+            // Render 6 weeks grid (42 cells)
+            for (let i = 0; i < 42; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'day';
 
-        let dayNum = i - prevDays + 1;
-        let cellDate = null;
-        if (i < prevDays) {
-            // previous month
-            const d = prevMonthLast - (prevDays - 1 - i);
-            cell.textContent = d;
-            cell.classList.add('other-month');
-            const dt = new Date(year, month -1, d);
-            cellDate = dt.toISOString().slice(0,10);
-        } else if (dayNum <= daysInMonth) {
-            // current month
-            cell.textContent = dayNum;
-            const dt = new Date(year, month, dayNum);
-            cellDate = dt.toISOString().slice(0,10);
-        } else {
-            // next month
-            const d = dayNum - daysInMonth;
-            cell.textContent = d;
-            cell.classList.add('other-month');
-            const dt = new Date(year, month +1, d);
-            cellDate = dt.toISOString().slice(0,10);
-        }
+                let dayNum = i - prevDays + 1;
+                let cellDate = null;
+                if (i < prevDays) {
+                    // previous month
+                    const d = prevMonthLast - (prevDays - 1 - i);
+                    cell.textContent = d;
+                    cell.classList.add('other-month');
+                    const dt = new Date(year, month -1, d);
+                    cellDate = dt.toISOString().slice(0,10);
+                } else if (dayNum <= daysInMonth) {
+                    // current month
+                    cell.textContent = dayNum;
+                    const dt = new Date(year, month, dayNum);
+                    cellDate = dt.toISOString().slice(0,10);
+                } else {
+                    // next month
+                    const d = dayNum - daysInMonth;
+                    cell.textContent = d;
+                    cell.classList.add('other-month');
+                    const dt = new Date(year, month +1, d);
+                    cellDate = dt.toISOString().slice(0,10);
+                }
 
-        // mark if there are entries on that date
-        if (entryDates.has(cellDate)) {
-            const mark = document.createElement('div');
-            mark.style.fontSize = '0.9rem';
-            mark.style.marginTop = '6px';
-            mark.textContent = '•';
-            cell.appendChild(mark);
-        }
+                // mark if there are entries on that date
+                if (entryDates.has(cellDate)) {
+                    const mark = document.createElement('div');
+                    mark.style.fontSize = '0.9rem';
+                    mark.style.marginTop = '6px';
+                    mark.textContent = '•';
+                    cell.appendChild(mark);
+                }
 
-        // click handler
-        cell.addEventListener('click', () => {
-            selectCalendarDate(cellDate);
+                // click handler
+                cell.addEventListener('click', () => {
+                    selectCalendarDate(cellDate);
+                });
+
+                // highlight selected
+                if (selectedCalendarDate && selectedCalendarDate === cellDate) {
+                    cell.classList.add('selected');
+                }
+
+                calendarEl.appendChild(cell);
+            }
         });
-
-        // highlight selected
-        if (selectedCalendarDate && selectedCalendarDate === cellDate) {
-            cell.classList.add('selected');
-        }
-
-        calendarEl.appendChild(cell);
     }
 }
 
@@ -879,70 +980,76 @@ function selectCalendarDate(dateISO) {
         }
     });
     // bring focus to journal box and prefill if there is an entry for that date (optional)
-    const entries = db.getUserEntries(currentUser.id).filter(e => new Date(e.createdAt).toISOString().slice(0,10) === dateISO);
-    if (entries.length > 0) {
-        // show latest entry for that day in the textarea for editing/new
-        document.getElementById('mood-text').value = entries[0].text;
-    } else {
-        document.getElementById('mood-text').value = '';
+    if (currentUser) {
+        database.getUserEntries(currentUser.id).then(entries => {
+            const filtered = entries.filter(e => new Date(e.createdAt).toISOString().slice(0,10) === dateISO);
+            if (filtered.length > 0) {
+                // show latest entry for that day in the textarea for editing/new
+                document.getElementById('mood-text').value = filtered[0].text;
+            } else {
+                document.getElementById('mood-text').value = '';
+            }
+            document.getElementById('mood-text').scrollIntoView({ behavior: 'smooth' });
+        });
     }
-    document.getElementById('mood-text').scrollIntoView({ behavior: 'smooth' });
 }
 
 function renderMoodChart() {
     if (!currentUser) return;
-    const allEntries = db.getUserEntries(currentUser.id);
-    // compute last 12 months
-    const now = new Date();
-    const labels = [];
-    const averages = [];
+    
+    database.getUserEntries(currentUser.id).then(allEntries => {
+        // compute last 12 months
+        const now = new Date();
+        const labels = [];
+        const averages = [];
 
-    for (let i = 11; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthKey = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
-        labels.push(d.toLocaleString('default', { month: 'short', year: 'numeric' }));
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const monthKey = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+            labels.push(d.toLocaleString('default', { month: 'short', year: 'numeric' }));
 
-        // filter entries in this month
-        const monthEntries = allEntries.filter(e => {
-            const dt = new Date(e.createdAt);
-            return dt.getFullYear() === d.getFullYear() && dt.getMonth() === d.getMonth();
-        });
-        if (monthEntries.length === 0) {
-            averages.push(null);
-        } else {
-            const avg = monthEntries.reduce((s, x) => s + x.mood, 0) / monthEntries.length;
-            averages.push(Number(avg.toFixed(2)));
-        }
-    }
-
-    // create or update chart
-    const ctx = document.getElementById('moodChart').getContext('2d');
-    if (moodChart) {
-        moodChart.data.labels = labels;
-        moodChart.data.datasets[0].data = averages;
-        moodChart.update();
-    } else {
-        moodChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Average Mood',
-                    data: averages,
-                    borderColor: 'rgba(74,144,226,0.9)',
-                    backgroundColor: 'rgba(74,144,226,0.2)',
-                    tension: 0.3,
-                    spanGaps: true
-                }]
-            },
-            options: {
-                scales: {
-                    y: { min: 1, max: 5, ticks: { stepSize: 1 } }
-                },
-                plugins: { legend: { display: false } }
+            // filter entries in this month
+            const monthEntries = allEntries.filter(e => {
+                const dt = new Date(e.createdAt);
+                return dt.getFullYear() === d.getFullYear() && dt.getMonth() === d.getMonth();
+            });
+            if (monthEntries.length === 0) {
+                averages.push(null);
+            } else {
+                const avg = monthEntries.reduce((s, x) => s + x.mood, 0) / monthEntries.length;
+                averages.push(Number(avg.toFixed(2)));
             }
-        });
-    }
+        }
+
+        // create or update chart
+        const ctx = document.getElementById('moodChart').getContext('2d');
+        if (moodChart) {
+            moodChart.data.labels = labels;
+            moodChart.data.datasets[0].data = averages;
+            moodChart.update();
+        } else {
+            moodChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Average Mood',
+                        data: averages,
+                        borderColor: 'rgba(74,144,226,0.9)',
+                        backgroundColor: 'rgba(74,144,226,0.2)',
+                        tension: 0.3,
+                        spanGaps: true
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: { min: 1, max: 5, ticks: { stepSize: 1 } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+    });
 }
 
 
