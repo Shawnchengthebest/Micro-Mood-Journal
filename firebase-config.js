@@ -3,6 +3,7 @@
 // Users can only access their own data via authentication
 
 console.log('firebase-config.js loading...');
+console.log('firebase object available?', typeof firebase !== 'undefined');
 
 const firebaseConfig = {
   apiKey: "AIzaSyAmfw2fYqd1ebIgNJMKKBfO9IKIH_pRJUs",
@@ -16,27 +17,42 @@ const firebaseConfig = {
 
 console.log('Initializing Firebase with config:', firebaseConfig.projectId);
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+try {
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    console.log('Firebase app initialized successfully');
+} catch (error) {
+    console.error('Error initializing Firebase:', error);
+}
 
-console.log('Firebase app initialized');
+console.log('Firebase app exists?', firebase?.app);
 
 // Get references to Firebase services (make global so script.js can access)
-window.auth = firebase.auth();
-window.db = firebase.firestore();
-
-console.log('Set window.auth and window.db:', {
-    auth: !!window.auth,
-    db: !!window.db
-});
+try {
+    window.auth = firebase.auth();
+    window.db = firebase.firestore();
+    
+    console.log('Set window.auth and window.db:', {
+        auth: !!window.auth,
+        db: !!window.db,
+        authType: typeof window.auth,
+        dbType: typeof window.db
+    });
+} catch (error) {
+    console.error('Error setting up Firebase services:', error);
+}
 
 // Enable offline persistence
-window.db.enablePersistence().catch((err) => {
-    if (err.code == 'failed-precondition') {
-        console.warn('Multiple tabs open - persistence disabled');
-    } else if (err.code == 'unimplemented') {
-        console.warn('Browser does not support persistence');
-    }
-});
+try {
+    window.db.enablePersistence().catch((err) => {
+        if (err.code == 'failed-precondition') {
+            console.warn('Multiple tabs open - persistence disabled');
+        } else if (err.code == 'unimplemented') {
+            console.warn('Browser does not support persistence');
+        }
+    });
+} catch (error) {
+    console.warn('Could not enable persistence:', error);
+}
 
-console.log('Firebase initialized successfully');
+console.log('Firebase initialization complete');
