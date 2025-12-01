@@ -7,13 +7,152 @@
     <link rel="stylesheet" href="Style.css">
 </head>
 <body>
-    <!-- Login Screen -->
-    <div id="auth-container" class="auth-container">
-        <div class="auth-card">
-            <h1 class="auth-title">Micro Mood Journal</h1>
-            <p class="auth-subtitle">Track your daily emotions</p>
+    <!-- Landing Page -->
+    <div id="landing-page" class="landing-page">
+        <!-- Navigation Bar -->
+        <nav class="navbar">
+            <div class="navbar-container">
+                <div class="navbar-brand">
+                    <h1>Micro Mood Journal</h1>
+                </div>
+                <ul class="navbar-menu">
+                    <li><a href="#product" class="nav-link">PRODUCT</a></li>
+                    <li><a href="#about" class="nav-link">ABOUT ME</a></li>
+                    <li><a href="#faq" class="nav-link">FAQ</a></li>
+                    <li><a href="#resources" class="nav-link">RESOURCES</a></li>
+                    <li><a href="#contact" class="nav-link">CONTACT</a></li>
+                    <li><button class="nav-login-btn" onclick="openAuthModal('login')">Login</button></li>
+                    <li><button class="nav-signup-btn" onclick="openAuthModal('signup')">Sign Up</button></li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Hero Section -->
+        <section id="hero" class="hero-section">
+            <div class="hero-content">
+                <h2>Track Your Daily Emotions with AI</h2>
+                <p>Understand your moods, gain insights, and improve your mental wellness journey</p>
+                <button class="cta-button" onclick="openAuthModal('signup')">Get Started Free</button>
+            </div>
+        </section>
+
+        <!-- Product Section -->
+        <section id="product" class="landing-section">
+            <div class="section-container">
+                <h2>Our Product</h2>
+                <p>Micro Mood Journal is an intelligent journaling application that uses AI to analyze your emotions and provide personalized insights. Write freely, let AI understand your mood, and track patterns over time.</p>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <span class="feature-icon">📝</span>
+                        <h3>Smart Journaling</h3>
+                        <p>Write naturally. AI automatically detects your mood from your entries.</p>
+                    </div>
+                    <div class="feature-card">
+                        <span class="feature-icon">📊</span>
+                        <h3>Mood Analytics</h3>
+                        <p>Visualize your emotional patterns over months with interactive charts.</p>
+                    </div>
+                    <div class="feature-card">
+                        <span class="feature-icon">📅</span>
+                        <h3>Calendar View</h3>
+                        <p>Browse and manage journal entries by date with an interactive calendar.</p>
+                    </div>
+                    <div class="feature-card">
+                        <span class="feature-icon">🤖</span>
+                        <h3>AI Analysis</h3>
+                        <p>Get mood suggestions and personalized advice powered by multiple AI models.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Me Section -->
+        <section id="about" class="landing-section alternate-bg">
+            <div class="section-container">
+                <h2>About Me</h2>
+                <p>I'm a software engineer passionate about mental wellness and AI. I created Micro Mood Journal to help people understand their emotions better and build healthier mental habits through reflection and data-driven insights.</p>
+                <p style="margin-top: 16px;">With a background in full-stack development and machine learning, I believe that technology can play a positive role in supporting mental health journeys.</p>
+            </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section id="faq" class="landing-section">
+            <div class="section-container">
+                <h2>Frequently Asked Questions</h2>
+                <div class="faq-grid">
+                    <div class="faq-item">
+                        <h3>Is my data private?</h3>
+                        <p>Yes. All your journal entries and data are stored securely in your browser's local storage. We do not collect or share your data with third parties.</p>
+                    </div>
+                    <div class="faq-item">
+                        <h3>Do I need an API key to use the app?</h3>
+                        <p>No. The app comes with a local AI fallback that works offline. You can optionally connect your own API key for advanced AI models (Groq, OpenAI, etc.) via the app settings.</p>
+                    </div>
+                    <div class="faq-item">
+                        <h3>Can I export my data?</h3>
+                        <p>Currently, you can view all your entries in the app. Export functionality is planned for a future update.</p>
+                    </div>
+                    <div class="faq-item">
+                        <h3>Is there a free plan?</h3>
+                        <p>Yes. Micro Mood Journal is completely free to use, with all features available at no cost.</p>
+                    </div>
+                    <div class="faq-item">
+                        <h3>What AI models does it support?</h3>
+                        <p>We support OpenAI, Groq (free), Hugging Face, Cohere, Together AI, and a local fallback. You can choose your preferred model in settings.</p>
+                    </div>
+                    <div class="faq-item">
+                        <h3>How is the mood detected?</h3>
+                        <p>The app analyzes the text you write, identifying emotional keywords and sentiments to suggest a mood level from 1 (sad) to 5 (happy).</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Resources Section -->
+        <section id="resources" class="landing-section alternate-bg">
+            <div class="section-container">
+                <h2>Resources</h2>
+                <div class="resources-list">
+                    <div class="resource-item">
+                        <h3>Documentation</h3>
+                        <p>Learn how to use all features and set up AI models. <a href="README_DEPLOY_VERSEL.md" target="_blank">View Docs</a></p>
+                    </div>
+                    <div class="resource-item">
+                        <h3>GitHub Repository</h3>
+                        <p>Explore the open-source code and contribute. <a href="https://github.com/Shawnchengthebest/Micro-Mood-Journal" target="_blank">Visit GitHub</a></p>
+                    </div>
+                    <div class="resource-item">
+                        <h3>AI API Setup Guide</h3>
+                        <p>Instructions for setting up free and paid AI APIs. <a href="#" onclick="alert('See the app settings for detailed API setup instructions.')">View Guide</a></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Contact Section -->
+        <section id="contact" class="landing-section">
+            <div class="section-container">
+                <h2>Get In Touch</h2>
+                <p>Have feedback, questions, or found a bug? I'd love to hear from you.</p>
+                <div class="contact-info">
+                    <p>📧 <strong>Email:</strong> <a href="mailto:contact@micromoodjournal.com">contact@micromoodjournal.com</a></p>
+                    <p>🐙 <strong>GitHub:</strong> <a href="https://github.com/Shawnchengthebest" target="_blank">@Shawnchengthebest</a></p>
+                    <p style="margin-top: 24px;"><button class="cta-button" onclick="openAuthModal('signup')">Start Journaling Today</button></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2025 Micro Mood Journal. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <!-- Auth Modal (Login/Signup Overlay) -->
+    <div id="auth-modal" class="auth-modal hidden">
+        <div class="auth-modal-content">
+            <button class="auth-modal-close" onclick="closeAuthModal()">✕</button>
             
-            <!-- Login Form -->
             <div id="login-form" class="auth-form active">
                 <h2>Welcome Back</h2>
                 <input type="email" id="login-email" placeholder="Email" class="auth-input" required>
@@ -23,7 +162,6 @@
                 <p style="font-size: 0.85rem; color: #64748B; margin-top: 16px; text-align: center;">Demo: demo@example.com / demo123</p>
             </div>
 
-            <!-- Sign Up Form -->
             <div id="signup-form" class="auth-form">
                 <h2>Create Account</h2>
                 <input type="text" id="signup-name" placeholder="Full Name" class="auth-input" required>

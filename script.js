@@ -241,6 +241,36 @@ function switchToLogin(e) {
     document.getElementById('auth-message').className = 'auth-message';
 }
 
+// ===== MODAL FUNCTIONS =====
+function openAuthModal(mode) {
+    const modal = document.getElementById('auth-modal');
+    const loginForm = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
+    
+    modal.classList.remove('hidden');
+    
+    if (mode === 'login') {
+        loginForm.classList.add('active');
+        signupForm.classList.remove('active');
+    } else if (mode === 'signup') {
+        signupForm.classList.add('active');
+        loginForm.classList.remove('active');
+    }
+}
+
+function closeAuthModal() {
+    const modal = document.getElementById('auth-modal');
+    modal.classList.add('hidden');
+    // Clear forms
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-password').value = '';
+    document.getElementById('signup-name').value = '';
+    document.getElementById('signup-email').value = '';
+    document.getElementById('signup-password').value = '';
+    document.getElementById('signup-confirm').value = '';
+    document.getElementById('auth-message').className = 'auth-message';
+}
+
 // ===== AUTHENTICATION HANDLERS =====
 function handleLogin() {
     const email = document.getElementById('login-email').value.trim();
@@ -261,6 +291,7 @@ function handleLogin() {
         console.log('Current user set:', currentUser);
         sessionStorage.setItem('currentUser', JSON.stringify(user));
         
+        closeAuthModal();
         // Immediately show app without delay
         showApp();
         
@@ -321,15 +352,21 @@ function showApp() {
     try {
         console.log('showApp called, currentUser:', currentUser);
         
-        const authContainer = document.getElementById('auth-container');
+        const landingPage = document.getElementById('landing-page');
         const appContainer = document.getElementById('app-container');
+        const authModal = document.getElementById('auth-modal');
         
-        console.log('Auth container found:', !!authContainer);
+        console.log('Landing page found:', !!landingPage);
         console.log('App container found:', !!appContainer);
         
-        if (authContainer) {
-            authContainer.classList.add('hidden');
-            console.log('Added hidden to auth-container');
+        if (landingPage) {
+            landingPage.classList.add('hidden');
+            console.log('Added hidden to landing-page');
+        }
+        
+        if (authModal) {
+            authModal.classList.add('hidden');
+            console.log('Added hidden to auth-modal');
         }
         
         if (appContainer) {
@@ -355,8 +392,20 @@ function showApp() {
 }
 
 function showAuthScreen() {
-    document.getElementById('app-container').classList.add('hidden');
-    document.getElementById('auth-container').classList.remove('hidden');
+    const landingPage = document.getElementById('landing-page');
+    const appContainer = document.getElementById('app-container');
+    const authModal = document.getElementById('auth-modal');
+    
+    if (landingPage) {
+        landingPage.classList.remove('hidden');
+    }
+    if (appContainer) {
+        appContainer.classList.add('hidden');
+    }
+    if (authModal) {
+        authModal.classList.add('hidden');
+    }
+    
     document.getElementById('login-form').classList.add('active');
     document.getElementById('signup-form').classList.remove('active');
     // Clear forms
