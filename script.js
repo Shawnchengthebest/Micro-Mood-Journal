@@ -234,17 +234,19 @@ class Database {
     async addEntry(entry) {
         try {
             await this.ensureFirebaseReady();
-            if (!currentUser) {
+            // Determine userId: prefer entry.userId, fallback to currentUser
+            const uid = (entry && entry.userId) || (currentUser && currentUser.id);
+            if (!uid) {
                 throw new Error('User not logged in');
             }
-            
+
             const entryData = {
-                userId: currentUser.id,
+                userId: uid,
                 mood: entry.mood,
                 text: entry.text,
                 createdAt: entry.createdAt || new Date().toISOString()
             };
-            
+
             const docRef = await window.db.collection('entries').add(entryData);
             return { success: true, id: docRef.id };
         } catch (error) {
@@ -256,18 +258,47 @@ class Database {
     async getUserEntries(userId) {
         try {
             await this.ensureFirebaseReady();
+            // Perform a simple where query to avoid composite index requirement,
+            // then sort locally by createdAt (desc).
             const snapshot = await window.db.collection('entries')
                 .where('userId', '==', userId)
-                .orderBy('createdAt', 'desc')
                 .get();
-            
+
             const entries = [];
             snapshot.forEach(doc => {
                 entries.push({ id: doc.id, ...doc.data() });
             });
+
+            // Sort entries by createdAt descending. Support both ISO strings and Firestore Timestamps.
+            entries.sort((a, b) => {
+                const aTime = a && a.createdAt && a.createdAt.seconds ? a.createdAt.toDate().getTime() : new Date(a.createdAt).getTime();
+                const bTime = b && b.createdAt && b.createdAt.seconds ? b.createdAt.toDate().getTime() : new Date(b.createdAt).getTime();
+                return bTime - aTime;
+            });
+
             return entries;
         } catch (error) {
             console.error('Get user entries error:', error);
+            // If this is an index-required error, surface a helpful message for debugging
+            if (error && error.message && error.message.includes('requires an index')) {
+                console.warn('Firestore query requires an index. Falling back to full collection scan for debugging. Create index in Firebase console to optimize.');
+                try {
+                    const snap = await window.db.collection('entries').get();
+                    const all = [];
+                    snap.forEach(d => all.push({ id: d.id, ...d.data() }));
+                    const filtered = all.filter(e => e.userId === userId);
+                    // sort by createdAt desc
+                    filtered.sort((a, b) => {
+                        const aTime = a && a.createdAt && a.createdAt.seconds ? a.createdAt.toDate().getTime() : new Date(a.createdAt).getTime();
+                        const bTime = b && b.createdAt && b.createdAt.seconds ? b.createdAt.toDate().getTime() : new Date(b.createdAt).getTime();
+                        return bTime - aTime;
+                    });
+                    return filtered;
+                } catch (fallbackError) {
+                    console.error('Fallback full-scan failed:', fallbackError);
+                    return [];
+                }
+            }
             return [];
         }
     }
@@ -378,11 +409,21 @@ function getMoodEmoji(mood) {
     return moods[mood] || '😐';
 }
 
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'short', 
+function parseCreatedAt(createdAt) {
+    if (!createdAt) return new Date(0);
+    // Firestore Timestamp
+    if (createdAt && createdAt.seconds && typeof createdAt.toDate === 'function') {
+        return createdAt.toDate();
+    }
+    // ISO string or Date
+    return new Date(createdAt);
+}
+
+function formatDate(dateValue) {
+    const date = parseCreatedAt(dateValue);
+    return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit'
@@ -502,25 +543,38 @@ function saveMoodAndCloseAdvice() {
         ? new Date(selectedCalendarDate + 'T12:00:00').toISOString()
         : new Date().toISOString();
     
-    database.addEntry({
-        userId: currentUser.id,
-        mood: pendingMoodData.moodScore,
-        text: moodText,
-        createdAt: createdAt
-    }).then(() => {
-        // Clear and refresh UI
-        document.getElementById('mood-text').value = '';
-        selectedCalendarDate = null;
-        loadUserData();
-        renderMoodChart();
-        renderCalendar(calYear, calMonth);
-        
-        closeMoodAdvice();
-        showNotification(`✅ Entry saved with mood ${pendingMoodData.moodScore}/5!`, 'success');
-    }).catch(error => {
-        console.error('Error saving entry:', error);
-        showNotification('Error saving entry. Please try again.', 'error');
-    });
+    // capture mood details so they remain available after async operations
+    const moodScore = pendingMoodData.moodScore;
+    const moodAnalysisText = pendingMoodData.text;
+
+    (async () => {
+        try {
+            const res = await database.addEntry({
+                userId: currentUser && currentUser.id,
+                mood: moodScore,
+                text: moodText,
+                createdAt: createdAt
+            });
+
+            if (res && res.success) {
+                // Clear and refresh UI
+                document.getElementById('mood-text').value = '';
+                selectedCalendarDate = null;
+                await loadUserData();
+                renderMoodChart();
+                renderCalendar(calYear, calMonth);
+
+                closeMoodAdvice();
+                showNotification(`✅ Entry saved with mood ${moodScore}/5!`, 'success');
+            } else {
+                console.error('Add entry failed:', res);
+                showNotification(res && res.message ? res.message : 'Error saving entry. Please try again.', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving entry:', error);
+            showNotification('Error saving entry. Please try again.', 'error');
+        }
+    })();
 }
 
 // ===== AUTHENTICATION HANDLERS =====
@@ -772,7 +826,7 @@ function calculateStreak(entries) {
     if (entries.length === 0) return 0;
     
     const sortedEntries = entries.sort((a, b) => 
-        new Date(b.createdAt) - new Date(a.createdAt)
+        parseCreatedAt(b.createdAt) - parseCreatedAt(a.createdAt)
     );
 
     let streak = 0;
@@ -780,7 +834,7 @@ function calculateStreak(entries) {
     currentDate.setHours(0, 0, 0, 0);
 
     for (const entry of sortedEntries) {
-        const entryDate = new Date(entry.createdAt);
+        const entryDate = parseCreatedAt(entry.createdAt);
         entryDate.setHours(0, 0, 0, 0);
 
         const dayDiff = Math.floor((currentDate - entryDate) / (1000 * 60 * 60 * 24));
@@ -799,8 +853,8 @@ function displayHistory(entries) {
     const listEl = document.getElementById('mood-list');
     const sorted = [...entries].sort((a, b) => 
         sortOrder === 'desc' 
-            ? new Date(b.createdAt) - new Date(a.createdAt)
-            : new Date(a.createdAt) - new Date(b.createdAt)
+            ? parseCreatedAt(b.createdAt) - parseCreatedAt(a.createdAt)
+            : parseCreatedAt(a.createdAt) - parseCreatedAt(b.createdAt)
     );
 
     if (sorted.length === 0) {
@@ -916,7 +970,7 @@ async function getTodayEntries() {
     today.setHours(0, 0, 0, 0);
     
     return allEntries.filter(entry => {
-        const entryDate = new Date(entry.createdAt);
+        const entryDate = parseCreatedAt(entry.createdAt);
         entryDate.setHours(0, 0, 0, 0);
         return entryDate.getTime() === today.getTime();
     });
@@ -1022,7 +1076,7 @@ function renderCalendar(year, month) {
     // get all user entries to mark days
     if (currentUser) {
         database.getUserEntries(currentUser.id).then(entries => {
-            const entryDates = new Set(entries.map(e => (new Date(e.createdAt)).toISOString().slice(0,10)));
+            const entryDates = new Set(entries.map(e => (parseCreatedAt(e.createdAt)).toISOString().slice(0,10)));
 
             // Render 6 weeks grid (42 cells)
             for (let i = 0; i < 42; i++) {
@@ -1090,7 +1144,7 @@ function selectCalendarDate(dateISO) {
     // bring focus to journal box and prefill if there is an entry for that date (optional)
     if (currentUser) {
         database.getUserEntries(currentUser.id).then(entries => {
-            const filtered = entries.filter(e => new Date(e.createdAt).toISOString().slice(0,10) === dateISO);
+            const filtered = entries.filter(e => parseCreatedAt(e.createdAt).toISOString().slice(0,10) === dateISO);
             if (filtered.length > 0) {
                 // show latest entry for that day in the textarea for editing/new
                 document.getElementById('mood-text').value = filtered[0].text;
@@ -1118,7 +1172,7 @@ function renderMoodChart() {
 
             // filter entries in this month
             const monthEntries = allEntries.filter(e => {
-                const dt = new Date(e.createdAt);
+                const dt = parseCreatedAt(e.createdAt);
                 return dt.getFullYear() === d.getFullYear() && dt.getMonth() === d.getMonth();
             });
             if (monthEntries.length === 0) {
@@ -1605,13 +1659,29 @@ function getGroqApiKey() {
 }
 
 // ===== INITIALIZATION =====
-document.addEventListener('DOMContentLoaded', () => {
-    // Check if user is already logged in
+document.addEventListener('DOMContentLoaded', async () => {
+    // Only auto-login if a valid session exists and matches a real Firebase user
     const storedUser = sessionStorage.getItem('currentUser');
+    let validSession = false;
     if (storedUser) {
-        currentUser = JSON.parse(storedUser);
+        try {
+            const userObj = JSON.parse(storedUser);
+            // Check if Firebase Auth has a current user and the UID matches
+            await database.ensureFirebaseReady();
+            const fbUser = window.auth.currentUser;
+            if (fbUser && userObj && fbUser.uid === userObj.id) {
+                currentUser = userObj;
+                validSession = true;
+            }
+        } catch (e) {
+            validSession = false;
+        }
+    }
+    if (validSession) {
         showApp();
     } else {
+        currentUser = null;
+        sessionStorage.removeItem('currentUser');
         showAuthScreen();
     }
 });
