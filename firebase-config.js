@@ -1,34 +1,31 @@
 // Firebase Configuration
-// DO NOT COMMIT API KEYS - This is OK because Firebase has security rules
-// Users can only access their own data via authentication
+console.log('[Firebase] Config loading...');
 
-console.log('firebase-config.js loading...');
-
-// Check if Firebase SDK is available
-if (typeof firebase === 'undefined') {
-    console.error('Firebase SDK not loaded! Waiting...');
-    
-    // Wait for Firebase SDK to load
-    let attempts = 0;
-    const checkFirebase = setInterval(() => {
-        if (typeof firebase !== 'undefined') {
-            clearInterval(checkFirebase);
-            console.log('Firebase SDK detected, initializing...');
-            doInitializeFirebase();
-        }
-        attempts++;
-        if (attempts > 100) {
-            clearInterval(checkFirebase);
-            console.error('Firebase SDK failed to load after 10 seconds');
-        }
-    }, 100);
-} else {
-    console.log('Firebase SDK available, initializing immediately');
-    doInitializeFirebase();
+// Wait for Firebase SDK to be available
+function waitForFirebase() {
+    return new Promise((resolve, reject) => {
+        let attempts = 0;
+        const maxAttempts = 100; // 10 seconds
+        
+        const checkFb = setInterval(() => {
+            if (typeof firebase !== 'undefined' && firebase.app) {
+                console.log('[Firebase] SDK detected');
+                clearInterval(checkFb);
+                resolve();
+                return;
+            }
+            attempts++;
+            if (attempts >= maxAttempts) {
+                clearInterval(checkFb);
+                console.error('[Firebase] SDK failed to load');
+                reject(new Error('Firebase SDK failed to load'));
+            }
+        }, 100);
+    });
 }
 
-function doInitializeFirebase() {
-    console.log('Initializing Firebase...');
+waitForFirebase().then(() => {
+    console.log('[Firebase] Initializing...');
     
     const firebaseConfig = {
         apiKey: "AIzaSyAmfw2fYqd1ebIgNJMKKBfO9IKIH_pRJUs",
@@ -41,30 +38,21 @@ function doInitializeFirebase() {
     };
 
     try {
-        // Initialize Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        console.log('Firebase app initialized:', app.name);
-        
-        // Get Auth and Firestore references
+        firebase.initializeApp(firebaseConfig);
         window.auth = firebase.auth();
         window.db = firebase.firestore();
         
-        console.log('Firebase services ready:', {
-            auth: !!window.auth,
-            db: !!window.db
-        });
+        console.log('[Firebase] ✓ Initialized successfully');
+        console.log('[Firebase] Auth:', !!window.auth);
+        console.log('[Firebase] Firestore:', !!window.db);
         
         // Enable offline persistence
         window.db.enablePersistence().catch((err) => {
-            if (err.code == 'failed-precondition') {
-                console.warn('Multiple tabs open - persistence disabled');
-            } else if (err.code == 'unimplemented') {
-                console.warn('Browser does not support persistence');
-            }
+            console.warn('[Firebase] Persistence:', err.code);
         });
-        
-        console.log('✓ Firebase initialization complete');
     } catch (error) {
-        console.error('Firebase initialization error:', error);
+        console.error('[Firebase] Init error:', error);
     }
-}
+}).catch((error) => {
+    console.error('[Firebase] Config error:', error);
+});
