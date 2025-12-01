@@ -1,0 +1,10 @@
+[build]
+  # No build command required for this plain static site.
+  command = ""
+  # Publish the repository root (index.html is at project root)
+  publish = "."
+
+[dev]
+  # Local dev server (optional)
+  command = "npx http-server -c-1 . -p 8888"
+  port = 8888
