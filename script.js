@@ -103,6 +103,9 @@ class Database {
 
     async init() {
         try {
+            // Wait for Firebase to be available first
+            await this.ensureFirebaseReady();
+            
             // Wait for Firebase to initialize
             await new Promise((resolve) => {
                 window.auth.onAuthStateChanged((user) => {
@@ -375,11 +378,17 @@ function switchToLogin(e) {
 
 // ===== MODAL FUNCTIONS =====
 function openAuthModal(mode) {
+    console.log('openAuthModal called with mode:', mode);
     const modal = document.getElementById('auth-modal');
     const loginForm = document.getElementById('login-form');
     const signupForm = document.getElementById('signup-form');
     
+    console.log('Modal element found:', !!modal);
+    console.log('Modal current classes:', modal?.className);
+    
     modal.classList.remove('hidden');
+    
+    console.log('Modal after removing hidden:', modal?.className);
     
     if (mode === 'login') {
         loginForm.classList.add('active');
