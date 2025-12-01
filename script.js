@@ -98,7 +98,7 @@ const ACTIVE_AI = 'local'; // Change this to your chosen API
 class Database {
     constructor() {
         this.initialized = false;
-        this.init();
+        this.initPromise = this.init();  // Store the promise but don't await here
     }
 
     async init() {
@@ -135,6 +135,15 @@ class Database {
             // Wait for Firebase to be available
             await this.ensureFirebaseReady();
             
+            // Double check that Firebase is available
+            if (!window.auth || !window.db) {
+                console.error('Firebase not available after ensureFirebaseReady:', {
+                    auth: !!window.auth,
+                    db: !!window.db
+                });
+                throw new Error('Firebase failed to load');
+            }
+            
             // Create user with Firebase Auth
             const userCredential = await window.auth.createUserWithEmailAndPassword(user.email, user.password);
             const uid = userCredential.user.uid;
@@ -148,6 +157,7 @@ class Database {
             
             return { success: true };
         } catch (error) {
+            console.error('addUser error:', error);
             if (error.code === 'auth/email-already-in-use') {
                 return { success: false, message: 'Email already registered' };
             }
@@ -159,6 +169,15 @@ class Database {
         try {
             // Wait for Firebase to be available
             await this.ensureFirebaseReady();
+            
+            // Double check that Firebase is available
+            if (!window.auth || !window.db) {
+                console.error('Firebase not available after ensureFirebaseReady:', {
+                    auth: !!window.auth,
+                    db: !!window.db
+                });
+                throw new Error('Firebase failed to load');
+            }
             
             const userCredential = await window.auth.signInWithEmailAndPassword(email, password);
             const user = userCredential.user;
@@ -499,6 +518,11 @@ function saveMoodAndCloseAdvice() {
 // ===== AUTHENTICATION HANDLERS =====
 async function handleLogin() {
     try {
+        // Ensure database is initialized
+        if (database.initPromise) {
+            await database.initPromise;
+        }
+        
         const email = document.getElementById('login-email').value.trim();
         const password = document.getElementById('login-password').value;
 
@@ -536,6 +560,11 @@ async function handleLogin() {
 
 async function handleSignUp() {
     try {
+        // Ensure database is initialized
+        if (database.initPromise) {
+            await database.initPromise;
+        }
+        
         const name = document.getElementById('signup-name').value.trim();
         const email = document.getElementById('signup-email').value.trim();
         const password = document.getElementById('signup-password').value;
