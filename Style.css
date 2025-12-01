@@ -853,6 +853,164 @@ body {
     margin: 0;
 }
 
+/* Mood Advice Panel */
+.mood-advice-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    padding: 20px;
+}
+
+.mood-advice-panel.hidden {
+    display: none;
+}
+
+.advice-container {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 500px;
+    width: 100%;
+    box-shadow: var(--shadow-lg);
+    animation: slideIn 0.3s ease-out;
+}
+
+.advice-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 16px;
+}
+
+.advice-header h3 {
+    color: var(--primary);
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+.advice-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: color 0.3s;
+}
+
+.advice-close-btn:hover {
+    color: var(--text-primary);
+}
+
+.advice-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.mood-display {
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(74, 144, 226, 0.05), rgba(123, 104, 238, 0.05));
+    border-radius: 12px;
+}
+
+.advice-emoji {
+    font-size: 3.5rem;
+    display: block;
+    margin-bottom: 12px;
+}
+
+.advice-mood-text {
+    color: var(--primary);
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.advice-text {
+    background: var(--background);
+    border-left: 4px solid var(--primary);
+    padding: 16px;
+    border-radius: 8px;
+    color: var(--text-primary);
+    line-height: 1.8;
+    font-size: 0.95rem;
+}
+
+.advice-text p {
+    margin: 0 0 12px 0;
+}
+
+.advice-text p:last-child {
+    margin-bottom: 0;
+}
+
+.advice-text strong {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+.advice-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.advice-save-btn {
+    flex: 1;
+    padding: 12px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.advice-save-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.advice-cancel-btn {
+    flex: 1;
+    padding: 12px;
+    background: var(--background);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.advice-cancel-btn:hover {
+    background: var(--border);
+}
+
+/* Mood color indicators */
+.mood-advice-panel.mood-bad .advice-container {
+    border-top: 4px solid var(--danger);
+}
+
+.mood-advice-panel.mood-neutral .advice-container {
+    border-top: 4px solid #FFA500;
+}
+
+.mood-advice-panel.mood-good .advice-container {
+    border-top: 4px solid var(--success);
+}
+
 /* Calendar & Chart Row */
 .calendar-chart-row {
     display: grid;

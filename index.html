@@ -206,6 +206,27 @@
                 </div>
             </section>
 
+            <!-- Mood Result & Advice Panel -->
+            <div id="mood-advice-panel" class="mood-advice-panel hidden">
+                <div class="advice-container">
+                    <div class="advice-header">
+                        <h3>Your Mood Analysis</h3>
+                        <button class="advice-close-btn" onclick="closeMoodAdvice()">✕</button>
+                    </div>
+                    <div class="advice-content">
+                        <div class="mood-display">
+                            <span id="advice-mood-emoji" class="advice-emoji">😐</span>
+                            <p id="advice-mood-text" class="advice-mood-text">Mood Level: 3/5</p>
+                        </div>
+                        <div id="advice-text" class="advice-text"></div>
+                        <div id="advice-actions" class="advice-actions">
+                            <button class="advice-save-btn" onclick="saveMoodAndCloseAdvice()">Save Entry</button>
+                            <button class="advice-cancel-btn" onclick="closeMoodAdvice()">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Calendar & Chart Row -->
             <section class="calendar-chart-row">
                 <div class="card calendar-card">

@@ -271,6 +271,87 @@ function closeAuthModal() {
     document.getElementById('auth-message').className = 'auth-message';
 }
 
+// ===== MOOD ADVICE FUNCTIONS =====
+let pendingMoodData = null;
+
+function showMoodAdvice(moodScore, analysisText) {
+    const panel = document.getElementById('mood-advice-panel');
+    const emoji = document.getElementById('advice-mood-emoji');
+    const moodText = document.getElementById('advice-mood-text');
+    const adviceText = document.getElementById('advice-text');
+    
+    // Get advice based on mood score
+    const advice = getMoodAdvice(moodScore);
+    
+    // Update emoji and mood level
+    emoji.textContent = getMoodEmoji(moodScore);
+    moodText.textContent = `Mood Level: ${moodScore}/5`;
+    
+    // Format advice text
+    const adviceHTML = `
+        <p><strong>${advice.title}</strong></p>
+        <p>${advice.messages.map(msg => msg === '' ? '<br>' : msg).join('<br>')}</p>
+    `;
+    adviceText.innerHTML = adviceHTML;
+    
+    // Add mood-specific styling
+    panel.classList.remove('mood-bad', 'mood-neutral', 'mood-good');
+    if (moodScore <= 2) {
+        panel.classList.add('mood-bad');
+    } else if (moodScore === 3) {
+        panel.classList.add('mood-neutral');
+    } else {
+        panel.classList.add('mood-good');
+    }
+    
+    // Store the mood data for saving later
+    pendingMoodData = { moodScore, text: analysisText };
+    
+    // Show the panel
+    panel.classList.remove('hidden');
+}
+
+function closeMoodAdvice() {
+    const panel = document.getElementById('mood-advice-panel');
+    panel.classList.add('hidden');
+    pendingMoodData = null;
+}
+
+function saveMoodAndCloseAdvice() {
+    if (!pendingMoodData) {
+        closeMoodAdvice();
+        return;
+    }
+    
+    const moodText = document.getElementById('mood-text').value.trim();
+    if (!moodText) {
+        showNotification('Please write something in the journal first', 'error');
+        return;
+    }
+    
+    // Add entry with the detected mood
+    const createdAt = selectedCalendarDate 
+        ? new Date(selectedCalendarDate + 'T12:00:00').toISOString()
+        : new Date().toISOString();
+    
+    db.addEntry({
+        userId: currentUser.id,
+        mood: pendingMoodData.moodScore,
+        text: moodText,
+        createdAt: createdAt
+    });
+    
+    // Clear and refresh UI
+    document.getElementById('mood-text').value = '';
+    selectedCalendarDate = null;
+    loadUserData();
+    renderMoodChart();
+    renderCalendar(calYear, calMonth);
+    
+    closeMoodAdvice();
+    showNotification(`✅ Entry saved with mood ${pendingMoodData.moodScore}/5!`, 'success');
+}
+
 // ===== AUTHENTICATION HANDLERS =====
 function handleLogin() {
     const email = document.getElementById('login-email').value.trim();
@@ -439,27 +520,9 @@ async function handleMoodSubmit() {
         const analysis = await getMoodAnalysis(text);
         const detectedMood = analysis.moodScore;
 
-        // Save the entry with the AI-detected mood
-        const entryObj = {
-            userId: currentUser.id,
-            mood: detectedMood,
-            text: text
-        };
-        if (selectedCalendarDate) {
-            // store the date (set time to midday to avoid timezone issues)
-            const d = new Date(selectedCalendarDate + 'T12:00:00');
-            entryObj.createdAt = d.toISOString();
-        }
-        db.addEntry(entryObj);
-
-        showNotification(`✅ Entry saved! Mood detected: ${getMoodEmoji(detectedMood)}`, 'success');
-        document.getElementById('mood-text').value = '';
-        selectedMood = null;
-        selectedCalendarDate = null;
-        // re-render calendar and chart
-        renderCalendar(calYear, calMonth);
-        renderMoodChart();
-        loadUserData();
+        // Show the advice panel instead of saving immediately
+        showMoodAdvice(detectedMood, text);
+        
     } catch (error) {
         console.error('Error analyzing mood:', error);
         showNotification('Error analyzing mood. Please try again.', 'error');
@@ -1186,14 +1249,80 @@ Remember: Your feelings are valid. Consider journaling more details to track pat
 }
 
 function getMoodAdvice(score) {
-    const advice = {
-        1: '💙 It sounds like you\'re going through a tough time. Consider reaching out to someone you trust, practicing self-care, or seeking professional support if needed.',
-        2: '💙 You seem a bit down. Try doing something you enjoy, spend time with friends, or take a break to recharge.',
-        3: '😐 You\'re feeling neutral. This is normal. Reflect on what could make your day better.',
-        4: '😊 You\'re in a good place! Enjoy this moment and consider what\'s making you feel positive.',
-        5: '🌟 You\'re feeling fantastic! Cherish this feeling and remember what brought you here for future reference.'
+    const adviceMap = {
+        1: {
+            title: "Your mood seems quite low right now 💙",
+            messages: [
+                "It's okay to feel sad sometimes. Your emotions are valid and important.",
+                "Consider these supportive steps:",
+                "• Take a short walk or get some fresh air",
+                "• Reach out to someone you trust or care about",
+                "• Practice deep breathing: 4 seconds in, 6 seconds out",
+                "• Engage in a small activity you enjoy",
+                "• Be kind to yourself - this feeling will pass",
+                "",
+                "If you're experiencing persistent sadness, please reach out to a mental health professional or crisis helpline. You're not alone. 💚"
+            ]
+        },
+        2: {
+            title: "You seem to be experiencing some challenges 💙",
+            messages: [
+                "It's natural to have difficult moments. Acknowledge your feelings.",
+                "Here are some helpful suggestions:",
+                "• Talk to someone about what's bothering you",
+                "• Identify one small positive thing to focus on",
+                "• Try a relaxing activity (music, reading, art)",
+                "• Practice self-compassion - treat yourself like a good friend",
+                "• Movement can help - stretch, dance, or exercise",
+                "",
+                "Remember, seeking help is a sign of strength, not weakness."
+            ]
+        },
+        3: {
+            title: "You're feeling neutral or balanced 😐",
+            messages: [
+                "Neutral moods are normal and can be a good time for reflection.",
+                "Consider these mindful actions:",
+                "• Reflect on what contributes to your emotional balance",
+                "• Set a small goal or intention for today",
+                "• Connect with someone important to you",
+                "• Engage in something that brings you joy or purpose",
+                "• Practice gratitude for the stability you're feeling",
+                "",
+                "Use this calm moment to build positive habits for your well-being."
+            ]
+        },
+        4: {
+            title: "You're feeling good! 🙂",
+            messages: [
+                "Great! You're in a positive frame of mind.",
+                "Make the most of this good mood:",
+                "• Channel this energy into something productive or creative",
+                "• Share your positivity with others around you",
+                "• Tackle something you've been putting off",
+                "• Strengthen relationships with people you care about",
+                "• Notice what's contributing to your good mood",
+                "",
+                "Appreciate these good moments and let them fuel your motivation!"
+            ]
+        },
+        5: {
+            title: "You're feeling amazing! 😄",
+            messages: [
+                "Wonderful! You're experiencing a high level of happiness and well-being.",
+                "Celebrate and expand this positive state:",
+                "• Express your gratitude and appreciation to others",
+                "• Use this energy to help or inspire someone else",
+                "• Start that project or goal you've been dreaming about",
+                "• Share your joy - it's contagious!",
+                "• Document this feeling to revisit on difficult days",
+                "",
+                "Keep nurturing what makes you feel this way. You deserve it! 🌟"
+            ]
+        }
     };
-    return advice[score] || advice[3];
+
+    return adviceMap[score] || adviceMap[3];
 }
 
 function extractMoodScore(text) {
