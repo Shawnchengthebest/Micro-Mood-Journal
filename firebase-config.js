@@ -15,12 +15,12 @@ const firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-// Get references to Firebase services
-const auth = firebase.auth();
-const db = firebase.firestore();
+// Get references to Firebase services (make global so script.js can access)
+window.auth = firebase.auth();
+window.db = firebase.firestore();
 
 // Enable offline persistence
-db.enablePersistence().catch((err) => {
+window.db.enablePersistence().catch((err) => {
     if (err.code == 'failed-precondition') {
         console.warn('Multiple tabs open - persistence disabled');
     } else if (err.code == 'unimplemented') {

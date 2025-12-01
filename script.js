@@ -104,19 +104,22 @@ class Database {
     async init() {
         try {
             // Wait for Firebase to initialize
-            await auth.authStateChanged((user) => {
-                if (user) {
-                    currentUser = {
-                        id: user.uid,
-                        email: user.email,
-                        name: user.displayName || 'User'
-                    };
-                    sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
-                    console.log('User logged in from Firebase:', currentUser);
-                } else {
-                    currentUser = null;
-                    sessionStorage.removeItem('currentUser');
-                }
+            await new Promise((resolve) => {
+                window.auth.onAuthStateChanged((user) => {
+                    if (user) {
+                        currentUser = {
+                            id: user.uid,
+                            email: user.email,
+                            name: user.displayName || 'User'
+                        };
+                        sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+                        console.log('User logged in from Firebase:', currentUser);
+                    } else {
+                        currentUser = null;
+                        sessionStorage.removeItem('currentUser');
+                    }
+                    resolve();
+                });
             });
             this.initialized = true;
         } catch (error) {
@@ -127,11 +130,11 @@ class Database {
     async addUser(user) {
         try {
             // Create user with Firebase Auth
-            const userCredential = await auth.createUserWithEmailAndPassword(user.email, user.password);
+            const userCredential = await window.auth.createUserWithEmailAndPassword(user.email, user.password);
             const uid = userCredential.user.uid;
             
             // Store user profile in Firestore
-            await db.collection('users').doc(uid).set({
+            await window.db.collection('users').doc(uid).set({
                 email: user.email,
                 name: user.name,
                 createdAt: new Date().toISOString()
@@ -148,11 +151,11 @@ class Database {
 
     async getUser(email, password) {
         try {
-            const userCredential = await auth.signInWithEmailAndPassword(email, password);
+            const userCredential = await window.auth.signInWithEmailAndPassword(email, password);
             const user = userCredential.user;
             
             // Get user profile from Firestore
-            const docSnap = await db.collection('users').doc(user.uid).get();
+            const docSnap = await window.db.collection('users').doc(user.uid).get();
             if (docSnap.exists) {
                 return {
                     id: user.uid,
@@ -169,7 +172,7 @@ class Database {
 
     async getUserById(id) {
         try {
-            const docSnap = await db.collection('users').doc(id).get();
+            const docSnap = await window.db.collection('users').doc(id).get();
             if (docSnap.exists) {
                 return {
                     id: id,
@@ -185,7 +188,7 @@ class Database {
 
     async getAllUsers() {
         try {
-            const snapshot = await db.collection('users').get();
+            const snapshot = await window.db.collection('users').get();
             const users = [];
             snapshot.forEach(doc => {
                 users.push({ id: doc.id, ...doc.data() });
@@ -210,7 +213,7 @@ class Database {
                 createdAt: entry.createdAt || new Date().toISOString()
             };
             
-            const docRef = await db.collection('entries').add(entryData);
+            const docRef = await window.db.collection('entries').add(entryData);
             return { success: true, id: docRef.id };
         } catch (error) {
             console.error('Add entry error:', error);
@@ -220,7 +223,7 @@ class Database {
 
     async getUserEntries(userId) {
         try {
-            const snapshot = await db.collection('entries')
+            const snapshot = await window.db.collection('entries')
                 .where('userId', '==', userId)
                 .orderBy('createdAt', 'desc')
                 .get();
@@ -238,7 +241,7 @@ class Database {
 
     async getAllEntries() {
         try {
-            const snapshot = await db.collection('entries').get();
+            const snapshot = await window.db.collection('entries').get();
             const entries = [];
             snapshot.forEach(doc => {
                 entries.push({ id: doc.id, ...doc.data() });
@@ -255,7 +258,7 @@ class Database {
             // Delete all entries for current user
             const entries = await this.getUserEntries(currentUser.id);
             for (const entry of entries) {
-                await db.collection('entries').doc(entry.id).delete();
+                await window.db.collection('entries').doc(entry.id).delete();
             }
             return { success: true };
         } catch (error) {
