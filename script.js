@@ -129,6 +129,9 @@ class Database {
 
     async addUser(user) {
         try {
+            // Wait for Firebase to be available
+            await this.ensureFirebaseReady();
+            
             // Create user with Firebase Auth
             const userCredential = await window.auth.createUserWithEmailAndPassword(user.email, user.password);
             const uid = userCredential.user.uid;
@@ -151,6 +154,9 @@ class Database {
 
     async getUser(email, password) {
         try {
+            // Wait for Firebase to be available
+            await this.ensureFirebaseReady();
+            
             const userCredential = await window.auth.signInWithEmailAndPassword(email, password);
             const user = userCredential.user;
             
@@ -172,6 +178,7 @@ class Database {
 
     async getUserById(id) {
         try {
+            await this.ensureFirebaseReady();
             const docSnap = await window.db.collection('users').doc(id).get();
             if (docSnap.exists) {
                 return {
@@ -188,6 +195,7 @@ class Database {
 
     async getAllUsers() {
         try {
+            await this.ensureFirebaseReady();
             const snapshot = await window.db.collection('users').get();
             const users = [];
             snapshot.forEach(doc => {
@@ -202,6 +210,7 @@ class Database {
 
     async addEntry(entry) {
         try {
+            await this.ensureFirebaseReady();
             if (!currentUser) {
                 throw new Error('User not logged in');
             }
@@ -223,6 +232,7 @@ class Database {
 
     async getUserEntries(userId) {
         try {
+            await this.ensureFirebaseReady();
             const snapshot = await window.db.collection('entries')
                 .where('userId', '==', userId)
                 .orderBy('createdAt', 'desc')
@@ -241,6 +251,7 @@ class Database {
 
     async getAllEntries() {
         try {
+            await this.ensureFirebaseReady();
             const snapshot = await window.db.collection('entries').get();
             const entries = [];
             snapshot.forEach(doc => {
@@ -255,6 +266,7 @@ class Database {
 
     async deleteAllData() {
         try {
+            await this.ensureFirebaseReady();
             // Delete all entries for current user
             const entries = await this.getUserEntries(currentUser.id);
             for (const entry of entries) {
@@ -265,6 +277,30 @@ class Database {
             console.error('Delete data error:', error);
             return { success: false, message: error.message };
         }
+    }
+
+    // Ensure Firebase is loaded before using it
+    async ensureFirebaseReady() {
+        return new Promise((resolve) => {
+            if (window.auth && window.db) {
+                resolve();
+            } else {
+                // Wait up to 5 seconds for Firebase to load
+                let attempts = 0;
+                const checkInterval = setInterval(() => {
+                    if (window.auth && window.db) {
+                        clearInterval(checkInterval);
+                        resolve();
+                    }
+                    attempts++;
+                    if (attempts > 50) { // 50 * 100ms = 5 seconds
+                        clearInterval(checkInterval);
+                        console.error('Firebase failed to load');
+                        resolve(); // resolve anyway to avoid hanging
+                    }
+                }, 100);
+            }
+        });
     }
 }
 
