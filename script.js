@@ -181,20 +181,21 @@ class Database {
             
             const userCredential = await window.auth.signInWithEmailAndPassword(email, password);
             const user = userCredential.user;
-            
+
             // Get user profile from Firestore
             const docSnap = await window.db.collection('users').doc(user.uid).get();
             if (docSnap.exists) {
-                return {
+                return { success: true, user: {
                     id: user.uid,
                     email: user.email,
                     name: docSnap.data().name
-                };
+                }};
             }
-            return null;
+            return { success: false, message: 'User profile not found' };
         } catch (error) {
             console.error('Login error:', error);
-            return null;
+            // Surface Firebase auth errors to the caller for better messages
+            return { success: false, message: error.message || 'Login failed' };
         }
     }
 
@@ -540,24 +541,25 @@ async function handleLogin() {
             return;
         }
 
-        const user = await database.getUser(email, password);
-        console.log('User found:', user);
-        
-        if (user) {
-            currentUser = user;
+        const res = await database.getUser(email, password);
+        console.log('Login response:', res);
+
+        if (res.success) {
+            currentUser = res.user;
             console.log('Current user set:', currentUser);
-            sessionStorage.setItem('currentUser', JSON.stringify(user));
-            
+            sessionStorage.setItem('currentUser', JSON.stringify(res.user));
+
             closeAuthModal();
             // Immediately show app without delay
             showApp();
-            
+
             // Show message after app is loaded
             setTimeout(() => {
-                showNotification(`Welcome back, ${user.name}!`, 'success');
+                showNotification(`Welcome back, ${res.user.name}!`, 'success');
             }, 100);
         } else {
-            showAuthMessage('Invalid email or password', 'error');
+            // show Firebase-provided message if available
+            showAuthMessage(res.message || 'Invalid email or password', 'error');
         }
     } catch (error) {
         console.error('Login error:', error);
@@ -594,8 +596,20 @@ async function handleSignUp() {
 
         const result = await database.addUser({ name, email, password });
         if (result.success) {
-            showAuthMessage('Account created! Please login.', 'success');
-            setTimeout(() => switchToLogin({ preventDefault: () => {} }), 500);
+            showAuthMessage('Account created! Signing you in…', 'success');
+            // Auto sign-in after successful signup for smoother UX
+            const loginRes = await database.getUser(email, password);
+            if (loginRes.success) {
+                currentUser = loginRes.user;
+                sessionStorage.setItem('currentUser', JSON.stringify(loginRes.user));
+                closeAuthModal();
+                showApp();
+                setTimeout(() => showNotification(`Welcome, ${loginRes.user.name}!`, 'success'), 150);
+                return;
+            } else {
+                // Fallback to ask user to login manually
+                setTimeout(() => switchToLogin({ preventDefault: () => {} }), 500);
+            }
             // Clear form
             document.getElementById('signup-name').value = '';
             document.getElementById('signup-email').value = '';
