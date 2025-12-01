@@ -498,69 +498,79 @@ function saveMoodAndCloseAdvice() {
 
 // ===== AUTHENTICATION HANDLERS =====
 async function handleLogin() {
-    const email = document.getElementById('login-email').value.trim();
-    const password = document.getElementById('login-password').value;
+    try {
+        const email = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-password').value;
 
-    console.log('Login attempt:', email);
+        console.log('Login attempt:', email);
 
-    if (!email || !password) {
-        showAuthMessage('Please fill in all fields', 'error');
-        return;
-    }
+        if (!email || !password) {
+            showAuthMessage('Please fill in all fields', 'error');
+            return;
+        }
 
-    const user = await database.getUser(email, password);
-    console.log('User found:', user);
-    
-    if (user) {
-        currentUser = user;
-        console.log('Current user set:', currentUser);
-        sessionStorage.setItem('currentUser', JSON.stringify(user));
+        const user = await database.getUser(email, password);
+        console.log('User found:', user);
         
-        closeAuthModal();
-        // Immediately show app without delay
-        showApp();
-        
-        // Show message after app is loaded
-        setTimeout(() => {
-            showNotification(`Welcome back, ${user.name}!`, 'success');
-        }, 100);
-    } else {
-        showAuthMessage('Invalid email or password', 'error');
+        if (user) {
+            currentUser = user;
+            console.log('Current user set:', currentUser);
+            sessionStorage.setItem('currentUser', JSON.stringify(user));
+            
+            closeAuthModal();
+            // Immediately show app without delay
+            showApp();
+            
+            // Show message after app is loaded
+            setTimeout(() => {
+                showNotification(`Welcome back, ${user.name}!`, 'success');
+            }, 100);
+        } else {
+            showAuthMessage('Invalid email or password', 'error');
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        showAuthMessage(`Error: ${error.message}`, 'error');
     }
 }
 
 async function handleSignUp() {
-    const name = document.getElementById('signup-name').value.trim();
-    const email = document.getElementById('signup-email').value.trim();
-    const password = document.getElementById('signup-password').value;
-    const confirm = document.getElementById('signup-confirm').value;
+    try {
+        const name = document.getElementById('signup-name').value.trim();
+        const email = document.getElementById('signup-email').value.trim();
+        const password = document.getElementById('signup-password').value;
+        const confirm = document.getElementById('signup-confirm').value;
 
-    if (!name || !email || !password || !confirm) {
-        showAuthMessage('Please fill in all fields', 'error');
-        return;
-    }
+        if (!name || !email || !password || !confirm) {
+            showAuthMessage('Please fill in all fields', 'error');
+            return;
+        }
 
-    if (password !== confirm) {
-        showAuthMessage('Passwords do not match', 'error');
-        return;
-    }
+        if (password !== confirm) {
+            showAuthMessage('Passwords do not match', 'error');
+            return;
+        }
 
-    if (password.length < 6) {
-        showAuthMessage('Password must be at least 6 characters', 'error');
-        return;
-    }
+        if (password.length < 6) {
+            showAuthMessage('Password must be at least 6 characters', 'error');
+            return;
+        }
 
-    const result = await database.addUser({ name, email, password });
-    if (result.success) {
-        showAuthMessage('Account created! Please login.', 'success');
-        setTimeout(() => switchToLogin({ preventDefault: () => {} }), 500);
-        // Clear form
-        document.getElementById('signup-name').value = '';
-        document.getElementById('signup-email').value = '';
-        document.getElementById('signup-password').value = '';
-        document.getElementById('signup-confirm').value = '';
-    } else {
-        showAuthMessage(result.message, 'error');
+        const result = await database.addUser({ name, email, password });
+        if (result.success) {
+            showAuthMessage('Account created! Please login.', 'success');
+            setTimeout(() => switchToLogin({ preventDefault: () => {} }), 500);
+            // Clear form
+            document.getElementById('signup-name').value = '';
+            document.getElementById('signup-email').value = '';
+            document.getElementById('signup-password').value = '';
+            document.getElementById('signup-confirm').value = '';
+        } else {
+            showAuthMessage(result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Signup error:', error);
+        showAuthMessage(`Error: ${error.message}`, 'error');
     }
 }
 
